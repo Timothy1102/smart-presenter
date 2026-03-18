@@ -224,9 +224,16 @@ export default function EditPage() {
           <Link
             href={`/presentations/${id}/present`}
             target="_blank"
+            className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium transition-colors"
+          >
+            ▶ Audience View
+          </Link>
+          <Link
+            href={`/presentations/${id}/present/control`}
+            target="_blank"
             className="px-4 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition-colors"
           >
-            ▶ Present
+            🖥 Presenter View
           </Link>
         </div>
       </header>

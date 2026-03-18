@@ -29,9 +29,16 @@ export function PresentationCard({ presentation }: { presentation: PresentationS
         <Link
           href={`/presentations/${presentation.id}/present`}
           target="_blank"
+          className="px-3 py-1 text-sm bg-indigo-600 hover:bg-indigo-700 rounded font-medium transition-colors"
+        >
+          ▶ Audience
+        </Link>
+        <Link
+          href={`/presentations/${presentation.id}/present/control`}
+          target="_blank"
           className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded font-medium transition-colors"
         >
-          Present
+          🖥 Presenter
         </Link>
         <div className="ml-auto">
           <DeleteButton id={presentation.id} />

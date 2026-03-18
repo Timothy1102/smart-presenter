@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { PresentationView } from "@/components/presenter/PresentationView";
+import { PresenterView } from "@/components/presenter/PresenterView";
 
 export const dynamic = "force-dynamic";
 
-export default async function PresentPage({
+export default async function PresenterControlPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -18,8 +18,8 @@ export default async function PresentPage({
   if (!presentation) notFound();
 
   return (
-    <div className="w-full h-dvh overflow-hidden bg-black">
-      <PresentationView
+    <div className="min-h-screen bg-gray-950">
+      <PresenterView
         slides={presentation.slides}
         title={presentation.title}
         presentationId={id}
