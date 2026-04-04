@@ -6,6 +6,7 @@ import Link from "next/link";
 import { SlideList } from "@/components/editor/SlideList";
 import { SlideEditor } from "@/components/editor/SlideEditor";
 import { SlideInput } from "@/types";
+import { DEFAULT_SLIDE_BACKGROUND } from "@/lib/slide-config";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -33,12 +34,13 @@ type EditorAction =
   | { type: "DELETE_SLIDE"; payload: string }
   | { type: "REORDER_SLIDES"; payload: SlideWithId[] }
   | { type: "SELECT_SLIDE"; payload: string | null }
+  | { type: "SET_ALL_BACKGROUNDS"; payload: string }
   | { type: "SAVE_START" }
   | { type: "SAVE_SUCCESS"; payload: SlideWithId[] };
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_BACKGROUND = "dark-default";
+const DEFAULT_BACKGROUND = DEFAULT_SLIDE_BACKGROUND;
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
@@ -100,6 +102,12 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           : state.selectedId;
       return { ...state, slides, selectedId, isDirty: true };
     }
+    case "SET_ALL_BACKGROUNDS":
+      return {
+        ...state,
+        slides: state.slides.map((s) => ({ ...s, background: action.payload })),
+        isDirty: true,
+      };
     case "REORDER_SLIDES":
       return { ...state, slides: action.payload, isDirty: true };
     case "SELECT_SLIDE":
@@ -216,6 +224,15 @@ export default function EditPage() {
           {state.isDirty && (
             <span className="text-xs text-yellow-500">Unsaved changes</span>
           )}
+          <button
+            onClick={() => {
+              const url = prompt("Image URL to apply to all slides:", DEFAULT_SLIDE_BACKGROUND);
+              if (url?.trim()) dispatch({ type: "SET_ALL_BACKGROUNDS", payload: url.trim() });
+            }}
+            className="px-4 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition-colors"
+          >
+            Set background for all slides
+          </button>
           <button
             onClick={handleSave}
             disabled={state.isSaving || !state.isDirty}

@@ -3,6 +3,9 @@
 // Users cannot change these values from the UI.
 // ─────────────────────────────────────────────────────────────────────────────
 
+export const DEFAULT_SLIDE_BACKGROUND =
+  "https://images.unsplash.com/photo-1478147427282-58a87a120781?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+
 export const SLIDE_CONFIG = {
   // How many visual lines of text before the auto-splitter starts a new slide
   maxLinesPerSlide: 4,
