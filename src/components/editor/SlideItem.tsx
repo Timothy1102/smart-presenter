@@ -72,7 +72,14 @@ export function SlideItem({ slide, index, isSelected, onSelect, onDelete }: Slid
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 mb-0.5">Slide {index + 1}</p>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <p className="text-xs text-gray-500">Slide {index + 1}</p>
+          {slide.section && (
+            <span className="text-[10px] text-blue-400 bg-blue-950 px-1 rounded">
+              {slide.section}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-gray-300 truncate leading-snug">
           {slide.text.split("\n")[0] || <span className="text-gray-600 italic">Empty</span>}
         </p>

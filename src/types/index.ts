@@ -3,6 +3,8 @@ export interface Slide {
   order: number;
   text: string;
   background: string;
+  section: string | null;
+  sectionGroup: number | null;
   presentationId: string;
 }
 
@@ -27,4 +29,18 @@ export interface SlideInput {
   text: string;
   background: string;
   order: number;
+  section?: string | null;
+  sectionGroup?: number | null;
+}
+
+// ─── Song Import Types ──────────────────────────────────────────────────────
+
+export interface SongData {
+  title: string;
+  order: string[];
+  sections: Record<string, string>;
+}
+
+export interface SongsImportFile {
+  songs: SongData[];
 }

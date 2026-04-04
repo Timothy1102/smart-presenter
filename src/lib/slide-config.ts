@@ -4,8 +4,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const SLIDE_CONFIG = {
-  // How many lines of text before the auto-splitter starts a new slide
+  // How many visual lines of text before the auto-splitter starts a new slide
   maxLinesPerSlide: 4,
+
+  // Approximate max characters per visual line before text wraps on a 16:9 slide.
+  // Used by the smart splitter to estimate how many visual lines a long line takes up.
+  maxCharsPerLine: 36,
 
   // Text appearance
   fontFamily: "'Inter', sans-serif",

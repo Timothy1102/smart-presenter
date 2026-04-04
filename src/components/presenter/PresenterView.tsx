@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Slide } from "@/types";
 import { SlideDisplay } from "./SlideDisplay";
 import { getPresentationChannel, BroadcastMessage } from "@/lib/broadcast";
 import { resolveBackground } from "@/lib/slide-config";
+
+interface SectionEntry {
+  label: string;
+  displayLabel: string;
+  sectionGroup: number;
+  firstSlideIndex: number;
+}
 
 interface PresenterViewProps {
   slides: Slide[];
@@ -91,6 +98,41 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
     }
   }, [current]);
 
+  // Derive section navigation entries from slides
+  const sectionEntries = useMemo(() => {
+    const entries: SectionEntry[] = [];
+    let i = 0;
+    while (i < slides.length) {
+      const slide = slides[i];
+      if (slide.sectionGroup == null) {
+        i++;
+        continue;
+      }
+      const group = slide.sectionGroup;
+      const label = slide.section || "?";
+      const firstIndex = i;
+      while (i < slides.length && slides[i].sectionGroup === group) i++;
+      entries.push({ label, displayLabel: label, sectionGroup: group, firstSlideIndex: firstIndex });
+    }
+
+    // Add occurrence numbers for repeated labels
+    const labelCounts = new Map<string, number>();
+    entries.forEach((e) => labelCounts.set(e.label, (labelCounts.get(e.label) || 0) + 1));
+    const labelOccurrence = new Map<string, number>();
+    for (const entry of entries) {
+      const total = labelCounts.get(entry.label) || 1;
+      if (total > 1) {
+        const occ = (labelOccurrence.get(entry.label) || 0) + 1;
+        labelOccurrence.set(entry.label, occ);
+        entry.displayLabel = `${entry.label} (${occ})`;
+      }
+    }
+
+    return entries;
+  }, [slides]);
+
+  const activeGroup = slides[current]?.sectionGroup ?? null;
+
   const currentSlide = slides[current];
   const nextSlide = slides[current + 1] ?? null;
 
@@ -118,6 +160,28 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
           </span>
         </div>
       </header>
+
+      {/* Section navigation bar */}
+      {sectionEntries.length > 0 && (
+        <div
+          className="flex-shrink-0 flex gap-1.5 px-4 py-2 overflow-x-auto border-b border-gray-800 bg-gray-950"
+          style={{ scrollbarWidth: "thin" }}
+        >
+          {sectionEntries.map((entry, idx) => (
+            <button
+              key={`${entry.sectionGroup}-${idx}`}
+              onClick={() => goTo(entry.firstSlideIndex)}
+              className={`flex-shrink-0 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                entry.sectionGroup === activeGroup
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+              }`}
+            >
+              {entry.displayLabel}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Main area: current + next */}
       <div className="flex flex-1 min-h-0 gap-4 p-4">

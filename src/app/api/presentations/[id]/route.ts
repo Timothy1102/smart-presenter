@@ -67,6 +67,8 @@ export async function PUT(request: Request, { params }: Params) {
             background: slide.background,
             order: i,
             presentationId: id,
+            section: slide.section ?? null,
+            sectionGroup: slide.sectionGroup ?? null,
           };
 
           if (slide.id && existingIds.has(slide.id)) {

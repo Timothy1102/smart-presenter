@@ -169,6 +169,8 @@ export default function EditPage() {
           text: s.text,
           background: s.background,
           order: i,
+          section: s.section ?? null,
+          sectionGroup: s.sectionGroup ?? null,
         })),
       }),
     });

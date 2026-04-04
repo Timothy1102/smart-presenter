@@ -20,6 +20,8 @@ model Slide {
   order          Int
   text           String
   background     String       @default("dark-default")
+  section        String?
+  sectionGroup   Int?
   presentationId String
   presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
 
