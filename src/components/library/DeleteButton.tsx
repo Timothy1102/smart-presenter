@@ -21,17 +21,17 @@ export function DeleteButton({ id }: { id: string }) {
 
   if (confirming) {
     return (
-      <div className="flex gap-2">
+      <div>
         <button
           onClick={handleDelete}
           disabled={loading}
-          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded font-medium disabled:opacity-50"
+          className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
         >
-          {loading ? "Deleting…" : "Yes, delete"}
+          {loading ? "Deleting…" : "Confirm delete"}
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded"
+          className="w-full text-left px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 transition-colors"
         >
           Cancel
         </button>
@@ -45,9 +45,9 @@ export function DeleteButton({ id }: { id: string }) {
         e.preventDefault();
         setConfirming(true);
       }}
-      className="px-3 py-1 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 transition-colors"
     >
-      Delete
+      🗑 Delete
     </button>
   );
 }
