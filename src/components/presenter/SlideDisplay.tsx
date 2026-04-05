@@ -42,7 +42,7 @@ export function SlideDisplay({ slide, slideNumber, totalSlides }: SlideDisplayPr
         src="/AC-logo.png"
         alt="Logo"
         className="absolute top-4 left-5 select-none"
-        style={{ height: "60px", width: "auto", opacity: 0.9 }}
+        style={{ height: "80px", width: "auto", opacity: 0.9 }}
       />
 
       {/* Slide counter */}
