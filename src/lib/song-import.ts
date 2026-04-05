@@ -1,4 +1,4 @@
-import { SLIDE_CONFIG } from "./slide-config";
+import { SLIDE_CONFIG, DEFAULT_SLIDE_BACKGROUND } from "./slide-config";
 import { SongData, SongsImportFile } from "@/types";
 
 export interface GeneratedSlide {
@@ -67,10 +67,10 @@ export function songToSlides(song: SongData): GeneratedSlide[] {
     const lyrics = song.sections[sectionKey];
 
     if (lyrics === undefined || lyrics.trim() === "") {
-      // Non-lyric section (Intro, Dạo, Câu cuối, etc.) → blank slide
+      // Non-lyric section (Intro, Dạo, Câu cuối, etc.) → slide with song title
       slides.push({
-        text: "",
-        background: "dark-default",
+        text: `✞ ${song.title} ✞`,
+        background: DEFAULT_SLIDE_BACKGROUND,
         order: order++,
         section: sectionKey,
         sectionGroup: groupIdx,
@@ -81,7 +81,7 @@ export function songToSlides(song: SongData): GeneratedSlide[] {
       if (lines.length === 0) {
         slides.push({
           text: "",
-          background: "dark-default",
+          background: DEFAULT_SLIDE_BACKGROUND,
           order: order++,
           section: sectionKey,
           sectionGroup: groupIdx,
@@ -91,7 +91,7 @@ export function songToSlides(song: SongData): GeneratedSlide[] {
         for (const chunk of chunks) {
           slides.push({
             text: chunk.join("\n"),
-            background: "dark-default",
+            background: DEFAULT_SLIDE_BACKGROUND,
             order: order++,
             section: sectionKey,
             sectionGroup: groupIdx,

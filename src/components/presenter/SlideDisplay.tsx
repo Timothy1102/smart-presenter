@@ -37,6 +37,14 @@ export function SlideDisplay({ slide, slideNumber, totalSlides }: SlideDisplayPr
         </p>
       </div>
 
+      {/* Logo */}
+      <img
+        src="/AC-logo.png"
+        alt="Logo"
+        className="absolute top-4 left-5 select-none"
+        style={{ height: "60px", width: "auto", opacity: 0.9 }}
+      />
+
       {/* Slide counter */}
       <div className="absolute bottom-4 right-5 text-white/30 text-sm font-mono select-none">
         {slideNumber} / {totalSlides}
