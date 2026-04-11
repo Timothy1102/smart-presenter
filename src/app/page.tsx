@@ -11,29 +11,57 @@ export default async function LibraryPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Smart Presenter</h1>
-            <p className="text-gray-400 text-sm mt-1">Your lyrics presentation library</p>
+    <div
+      className="min-h-screen bg-gray-950 bg-cover bg-center bg-fixed relative"
+      style={{ backgroundImage: "url('/bg2.jpg')" }}
+    >
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+
+      {/* Content */}
+      <div className="relative z-10 min-h-screen flex flex-col">
+        {/* Hero header */}
+        <header className="px-6 pt-14 pb-10 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white/70 text-xs font-medium mb-5 backdrop-blur-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live Presentation Tool
           </div>
-          <div className="flex gap-3">
-            <Link
-              href="/import"
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
-            >
-              Import Songs
-            </Link>
+          <h1 className="text-5xl font-bold text-white tracking-tight mb-3">
+            Smart Presenter
+          </h1>
+          <p className="text-white/60 text-lg max-w-md mx-auto mb-8">
+            Beautiful lyrics &amp; text presentations for churches and live events
+          </p>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
               href="/presentations/new"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-2.5 bg-white text-gray-900 rounded-xl font-semibold text-sm hover:bg-white/90 transition-all shadow-lg shadow-black/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.99]"
             >
               + New Presentation
             </Link>
+            <Link
+              href="/import"
+              className="px-6 py-2.5 bg-white/10 border border-white/20 text-white rounded-xl font-semibold text-sm hover:bg-white/20 transition-all backdrop-blur-sm"
+            >
+              Import Songs
+            </Link>
           </div>
-        </div>
-        <PresentationList presentations={presentations} />
+        </header>
+
+        {/* Library section */}
+        <main className="flex-1 px-4 pb-12 max-w-5xl mx-auto w-full">
+          <div className="bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-white/80 text-sm font-semibold uppercase tracking-widest">
+                Library
+              </h2>
+              <span className="text-white/40 text-xs">
+                {presentations.length} presentation{presentations.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <PresentationList presentations={presentations} />
+          </div>
+        </main>
       </div>
     </div>
   );

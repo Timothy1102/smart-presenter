@@ -26,13 +26,13 @@ export function DeleteButton({ id, variant = "menu" }: { id: string; variant?: "
           <button
             onClick={handleDelete}
             disabled={loading}
-            className="px-3 py-1 text-xs bg-red-900/50 hover:bg-red-800 rounded text-red-300 transition-colors disabled:opacity-50"
+            className="px-3 py-1 text-xs bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-300 transition-all disabled:opacity-50"
           >
             {loading ? "…" : "Confirm"}
           </button>
           <button
             onClick={() => setConfirming(false)}
-            className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors"
+            className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-white/60 transition-all"
           >
             Cancel
           </button>
@@ -45,7 +45,7 @@ export function DeleteButton({ id, variant = "menu" }: { id: string; variant?: "
           e.preventDefault();
           setConfirming(true);
         }}
-        className="px-3 py-1 text-xs bg-gray-700 hover:bg-red-900/50 rounded text-red-400 transition-colors"
+        className="px-3 py-1 text-xs bg-white/10 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 rounded-lg text-white/50 hover:text-red-300 transition-all"
       >
         Delete
       </button>
@@ -59,13 +59,13 @@ export function DeleteButton({ id, variant = "menu" }: { id: string; variant?: "
         <button
           onClick={handleDelete}
           disabled={loading}
-          className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
+          className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
         >
           {loading ? "Deleting…" : "Confirm delete"}
         </button>
         <button
           onClick={() => setConfirming(false)}
-          className="w-full text-left px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 transition-colors"
+          className="w-full text-left px-4 py-2.5 text-sm text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
         >
           Cancel
         </button>
@@ -79,7 +79,7 @@ export function DeleteButton({ id, variant = "menu" }: { id: string; variant?: "
         e.preventDefault();
         setConfirming(true);
       }}
-      className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 transition-colors"
+      className="w-full text-left px-4 py-2.5 text-sm text-red-400/80 hover:text-red-400 hover:bg-red-500/20 transition-colors"
     >
       🗑 Delete
     </button>

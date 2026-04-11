@@ -18,7 +18,6 @@ export function PresentationCard({ presentation }: { presentation: PresentationS
   const time = new Date(presentation.updatedAt).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
   });
 
   useEffect(() => {
@@ -32,29 +31,29 @@ export function PresentationCard({ presentation }: { presentation: PresentationS
   }, []);
 
   return (
-    <div className="group bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors">
+    <div className="group bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 hover:border-white/20 transition-all">
       <Link href={`/presentations/${presentation.id}/edit`} className="block">
-        <h2 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors truncate mb-1">
+        <h2 className="text-base font-semibold text-white group-hover:text-blue-300 transition-colors truncate mb-1">
           {presentation.title}
         </h2>
-        <p className="text-sm text-gray-500">
-          {presentation._count.slides} slide{presentation._count.slides !== 1 ? "s" : ""} · Updated {date} {time}
+        <p className="text-xs text-white/35">
+          {presentation._count.slides} slide{presentation._count.slides !== 1 ? "s" : ""} · {date} {time}
         </p>
       </Link>
       <div className="flex items-center justify-end mt-4">
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
-            className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded font-medium transition-colors"
+            className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-white/70 hover:text-white font-medium transition-all"
           >
             Actions ▾
           </button>
           {menuOpen && (
-            <div className="absolute right-0 mt-1 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
+            <div className="absolute right-0 mt-1.5 w-44 bg-gray-900/90 border border-white/10 rounded-xl shadow-2xl shadow-black/50 z-10 overflow-hidden backdrop-blur-md">
               <Link
                 href={`/presentations/${presentation.id}/edit`}
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
               >
                 ✏️ Edit
               </Link>
@@ -62,7 +61,7 @@ export function PresentationCard({ presentation }: { presentation: PresentationS
                 href={`/presentations/${presentation.id}/present`}
                 target="_blank"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
               >
                 ▶ Audience
               </Link>
@@ -70,11 +69,11 @@ export function PresentationCard({ presentation }: { presentation: PresentationS
                 href={`/presentations/${presentation.id}/present/control`}
                 target="_blank"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors"
               >
                 🖥 Presenter
               </Link>
-              <div className="border-t border-gray-700">
+              <div className="border-t border-white/10">
                 <DeleteButton id={presentation.id} />
               </div>
             </div>
