@@ -39,6 +39,7 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
   const [audienceWindowOpen, setAudienceWindowOpen] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
+  const sectionBarRef = useRef<HTMLDivElement>(null);
   const audienceWindowRef = useRef<Window | null>(null);
 
   // Timer
@@ -161,6 +162,16 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
     }
   }, [current]);
 
+  // Auto-scroll the section bar to keep active section centered
+  useEffect(() => {
+    const bar = sectionBarRef.current;
+    if (!bar) return;
+    const activeEl = bar.querySelector("[data-active-section]") as HTMLElement | null;
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    }
+  }, [current]);
+
   // Derive section navigation entries from slides
   const sectionEntries = useMemo(() => {
     const entries: SectionEntry[] = [];
@@ -264,19 +275,22 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
       {/* Section navigation bar */}
       {sectionEntries.length > 0 && (
         <div
+          ref={sectionBarRef}
           className="flex-shrink-0 flex gap-1.5 px-4 py-2 overflow-x-auto border-b border-gray-800 bg-gray-950"
           style={{ scrollbarWidth: "thin" }}
         >
           {sectionEntries.map((entry, idx) => {
+            const isActive = entry.sectionGroup === activeGroup;
             const songColor = isSetlist && entry.songIndex != null
               ? setlistSongs[entry.songIndex]?.color
               : null;
             return (
               <button
                 key={`${entry.sectionGroup}-${idx}`}
+                {...(isActive ? { "data-active-section": true } : {})}
                 onClick={() => goTo(entry.firstSlideIndex)}
                 className={`flex-shrink-0 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-                  entry.sectionGroup === activeGroup
+                  isActive
                     ? songColor
                       ? `${songColor.activeBg} text-white`
                       : "bg-blue-600 text-white"
