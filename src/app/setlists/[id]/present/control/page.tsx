@@ -28,7 +28,7 @@ export default async function SetlistPresenterControlPage({
 
   if (!setlist) notFound();
 
-  const slides = flattenSetlistSlides(setlist.items as SetlistItemWithSlides[]);
+  const { slides, songIndexBySlide, songs } = flattenSetlistSlides(setlist.items as SetlistItemWithSlides[]);
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -36,6 +36,8 @@ export default async function SetlistPresenterControlPage({
         slides={slides}
         title={setlist.title}
         presentationId={`setlist-${id}`}
+        setlistSongs={songs}
+        songIndexBySlide={songIndexBySlide}
       />
     </div>
   );

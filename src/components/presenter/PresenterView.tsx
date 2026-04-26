@@ -5,18 +5,24 @@ import { Slide } from "@/types";
 import { SlideDisplay } from "./SlideDisplay";
 import { getPresentationChannel, BroadcastMessage } from "@/lib/broadcast";
 import { resolveBackground } from "@/lib/slide-config";
+import type { SetlistSongInfo } from "@/lib/setlist";
 
 interface SectionEntry {
   label: string;
   displayLabel: string;
   sectionGroup: number;
   firstSlideIndex: number;
+  songIndex: number | null;
 }
 
 interface PresenterViewProps {
   slides: Slide[];
   title: string;
   presentationId: string;
+  /** When presenting a setlist, ordered list of songs with colors */
+  setlistSongs?: SetlistSongInfo[];
+  /** Maps each slide index to its song index in setlistSongs */
+  songIndexBySlide?: number[];
 }
 
 // Format elapsed seconds as MM:SS
@@ -26,7 +32,8 @@ function formatTime(seconds: number): string {
   return `${m}:${s}`;
 }
 
-export function PresenterView({ slides, title, presentationId }: PresenterViewProps) {
+export function PresenterView({ slides, title, presentationId, setlistSongs, songIndexBySlide }: PresenterViewProps) {
+  const isSetlist = !!setlistSongs && !!songIndexBySlide;
   const [current, setCurrent] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [audienceWindowOpen, setAudienceWindowOpen] = useState(false);
@@ -60,7 +67,9 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
       return;
     }
 
-    const url = `/presentations/${presentationId}/present`;
+    const url = presentationId.startsWith("setlist-")
+      ? `/setlists/${presentationId.replace("setlist-", "")}/present`
+      : `/presentations/${presentationId}/present`;
 
     // Try Window Management API to detect external screens
     try {
@@ -165,8 +174,9 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
       const group = slide.sectionGroup;
       const label = slide.section || "?";
       const firstIndex = i;
+      const sIdx = songIndexBySlide ? songIndexBySlide[i] : null;
       while (i < slides.length && slides[i].sectionGroup === group) i++;
-      entries.push({ label, displayLabel: label, sectionGroup: group, firstSlideIndex: firstIndex });
+      entries.push({ label, displayLabel: label, sectionGroup: group, firstSlideIndex: firstIndex, songIndex: sIdx });
     }
 
     // Add occurrence numbers for repeated labels
@@ -183,7 +193,7 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
     }
 
     return entries;
-  }, [slides]);
+  }, [slides, songIndexBySlide]);
 
   const activeGroup = slides[current]?.sectionGroup ?? null;
 
@@ -225,25 +235,60 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
         </div>
       </header>
 
+      {/* Song order bar (setlist only) */}
+      {isSetlist && setlistSongs.length > 0 && (
+        <div
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 overflow-x-auto border-b border-gray-800 bg-gray-950"
+          style={{ scrollbarWidth: "thin" }}
+        >
+          <span className="text-gray-600 text-xs shrink-0">Setlist:</span>
+          {setlistSongs.map((song, idx) => {
+            const isCurrent = songIndexBySlide[current] === idx;
+            return (
+              <button
+                key={idx}
+                onClick={() => goTo(song.firstSlideIndex)}
+                className={`flex-shrink-0 px-3 py-1 text-xs rounded-full font-medium transition-all ${
+                  isCurrent
+                    ? `${song.color.activeBg} text-white ring-1 ring-white/30`
+                    : `${song.color.bg} ${song.color.text} hover:brightness-125`
+                }`}
+              >
+                {idx + 1}. {song.title}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Section navigation bar */}
       {sectionEntries.length > 0 && (
         <div
           className="flex-shrink-0 flex gap-1.5 px-4 py-2 overflow-x-auto border-b border-gray-800 bg-gray-950"
           style={{ scrollbarWidth: "thin" }}
         >
-          {sectionEntries.map((entry, idx) => (
-            <button
-              key={`${entry.sectionGroup}-${idx}`}
-              onClick={() => goTo(entry.firstSlideIndex)}
-              className={`flex-shrink-0 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-                entry.sectionGroup === activeGroup
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
-              }`}
-            >
-              {entry.displayLabel}
-            </button>
-          ))}
+          {sectionEntries.map((entry, idx) => {
+            const songColor = isSetlist && entry.songIndex != null
+              ? setlistSongs[entry.songIndex]?.color
+              : null;
+            return (
+              <button
+                key={`${entry.sectionGroup}-${idx}`}
+                onClick={() => goTo(entry.firstSlideIndex)}
+                className={`flex-shrink-0 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                  entry.sectionGroup === activeGroup
+                    ? songColor
+                      ? `${songColor.activeBg} text-white`
+                      : "bg-blue-600 text-white"
+                    : songColor
+                      ? `${songColor.bg} ${songColor.text} hover:brightness-125`
+                      : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                }`}
+              >
+                {entry.displayLabel}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -337,10 +382,17 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
             const isFirstInSection =
               slide.section &&
               (i === 0 || slides[i - 1].sectionGroup !== slide.sectionGroup);
+            const thumbSongColor = isSetlist && songIndexBySlide[i] != null
+              ? setlistSongs[songIndexBySlide[i]]?.color
+              : null;
             return (
               <div key={slide.id} className="flex-shrink-0 flex flex-col items-center gap-1">
                 {isFirstInSection && (
-                  <span className="text-[9px] text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded whitespace-nowrap mt-1">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap mt-1 ${
+                    thumbSongColor
+                      ? `${thumbSongColor.text} ${thumbSongColor.bg}`
+                      : "text-blue-400 bg-blue-950"
+                  }`}>
                     {slide.section}
                   </span>
                 )}

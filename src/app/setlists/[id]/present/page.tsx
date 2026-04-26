@@ -28,7 +28,7 @@ export default async function SetlistPresentPage({
 
   if (!setlist) notFound();
 
-  const slides = flattenSetlistSlides(setlist.items as SetlistItemWithSlides[]);
+  const { slides } = flattenSetlistSlides(setlist.items as SetlistItemWithSlides[]);
 
   return (
     <div className="w-full h-dvh overflow-hidden bg-black">
