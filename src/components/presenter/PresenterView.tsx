@@ -326,24 +326,37 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
         className="flex-shrink-0 flex gap-2 px-4 py-3 overflow-x-auto border-t border-gray-800 bg-gray-950"
         style={{ scrollbarWidth: "thin" }}
       >
-        {slides.map((slide, i) => (
-          <button
-            key={slide.id}
-            onClick={() => goTo(i)}
-            className={`flex-shrink-0 rounded overflow-hidden border-2 transition-all ${
-              i === current
-                ? "border-blue-500 scale-105 shadow-md shadow-blue-900/40"
-                : "border-transparent opacity-60 hover:opacity-100 hover:border-gray-600"
-            }`}
-            style={{ width: 96, height: 54, background: resolveBackground(slide.background) }}
-          >
-            <div className="w-full h-full flex items-center justify-center p-1">
-              <span className="text-white text-[7px] leading-tight text-center line-clamp-3 font-medium drop-shadow">
-                {slide.text || "…"}
-              </span>
+        {slides.map((slide, i) => {
+          const isFirstInSection =
+            slide.section &&
+            (i === 0 || slides[i - 1].sectionGroup !== slide.sectionGroup);
+          return (
+            <div key={slide.id} className="flex-shrink-0 flex flex-col items-center gap-1">
+              {isFirstInSection ? (
+                <span className="text-[9px] text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  {slide.section}
+                </span>
+              ) : (
+                <span className="h-[18px]" />
+              )}
+              <button
+                onClick={() => goTo(i)}
+                className={`rounded overflow-hidden border-2 transition-all ${
+                  i === current
+                    ? "border-blue-500 scale-105 shadow-md shadow-blue-900/40"
+                    : "border-transparent opacity-60 hover:opacity-100 hover:border-gray-600"
+                }`}
+                style={{ width: 96, height: 54, background: resolveBackground(slide.background) }}
+              >
+                <div className="w-full h-full flex items-center justify-center p-1">
+                  <span className="text-white text-[7px] leading-tight text-center line-clamp-3 font-medium drop-shadow">
+                    {slide.text || "…"}
+                  </span>
+                </div>
+              </button>
             </div>
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
