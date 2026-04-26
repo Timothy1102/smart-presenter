@@ -148,7 +148,7 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
     if (!strip) return;
     const thumb = strip.children[current] as HTMLElement | undefined;
     if (thumb) {
-      thumb.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+      thumb.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
     }
   }, [current]);
 
@@ -199,7 +199,7 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col select-none">
+    <div className="h-screen bg-gray-900 flex flex-col select-none overflow-hidden">
 
       {/* Top bar */}
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-gray-950 border-b border-gray-800">
@@ -247,116 +247,125 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
         </div>
       )}
 
-      {/* Main area: current + next */}
-      <div className="flex flex-1 min-h-0 gap-4 p-4">
+      {/* Body: main content + right sidebar */}
+      <div className="flex flex-1 min-h-0">
 
-        {/* Current slide — large */}
-        <div className="flex flex-col flex-1 min-w-0 gap-2">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Current</p>
-          <div className="flex-1 rounded-xl overflow-hidden border-2 border-blue-500 shadow-lg shadow-blue-900/30">
-            <div className="w-full h-full" style={{ aspectRatio: "16/9", minHeight: 0 }}>
-              <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                <div className="absolute inset-0">
-                  <SlideDisplay
-                    slide={currentSlide}
-                    slideNumber={current + 1}
-                    totalSlides={slides.length}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Left: slides + controls */}
+        <div className="flex flex-col flex-1 min-w-0">
 
-        {/* Next slide — smaller */}
-        <div className="flex flex-col w-80 flex-shrink-0 gap-2">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Next</p>
-          <div className="rounded-xl overflow-hidden border border-gray-700">
-            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <div className="absolute inset-0">
-                {nextSlide ? (
-                  <SlideDisplay
-                    slide={nextSlide}
-                    slideNumber={current + 2}
-                    totalSlides={slides.length}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-600 text-sm">
-                    End of presentation
+          {/* Main area: current + next */}
+          <div className="flex flex-1 min-h-0 gap-4 p-4">
+
+            {/* Current slide — large */}
+            <div className="flex flex-col flex-1 min-w-0 gap-2">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Current</p>
+              <div className="flex-1 rounded-xl overflow-hidden border-2 border-blue-500 shadow-lg shadow-blue-900/30">
+                <div className="w-full h-full" style={{ aspectRatio: "16/9", minHeight: 0 }}>
+                  <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                    <div className="absolute inset-0">
+                      <SlideDisplay
+                        slide={currentSlide}
+                        slideNumber={current + 1}
+                        totalSlides={slides.length}
+                      />
+                    </div>
                   </div>
-                )}
+                </div>
+              </div>
+            </div>
+
+            {/* Next slide — smaller */}
+            <div className="flex flex-col w-80 flex-shrink-0 gap-2">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Next</p>
+              <div className="rounded-xl overflow-hidden border border-gray-700">
+                <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                  <div className="absolute inset-0">
+                    {nextSlide ? (
+                      <SlideDisplay
+                        slide={nextSlide}
+                        slideNumber={current + 2}
+                        totalSlides={slides.length}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center text-gray-600 text-sm">
+                        End of presentation
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Slide text preview */}
+              <div className="flex-1 rounded-lg bg-gray-800 border border-gray-700 p-3 overflow-y-auto">
+                <p className="text-xs text-gray-500 mb-1">Slide {current + 1} text</p>
+                <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                  {currentSlide.text || <span className="text-gray-600 italic">Empty slide</span>}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Slide text preview */}
-          <div className="flex-1 rounded-lg bg-gray-800 border border-gray-700 p-3 overflow-y-auto">
-            <p className="text-xs text-gray-500 mb-1">Slide {current + 1} text</p>
-            <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
-              {currentSlide.text || <span className="text-gray-600 italic">Empty slide</span>}
-            </p>
+          {/* Navigation controls */}
+          <div className="flex-shrink-0 flex items-center justify-center gap-4 py-3 border-t border-gray-800 bg-gray-950">
+            <button
+              onClick={goPrev}
+              disabled={current === 0}
+              className="px-6 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-white rounded-lg font-medium transition-colors text-sm"
+            >
+              ← Previous
+            </button>
+            <span className="text-gray-500 text-sm w-28 text-center">
+              {current + 1} / {slides.length}
+            </span>
+            <button
+              onClick={goNext}
+              disabled={current === slides.length - 1}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 text-white rounded-lg font-medium transition-colors text-sm"
+            >
+              Next →
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Navigation controls */}
-      <div className="flex-shrink-0 flex items-center justify-center gap-4 py-3 border-t border-gray-800 bg-gray-950">
-        <button
-          onClick={goPrev}
-          disabled={current === 0}
-          className="px-6 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-white rounded-lg font-medium transition-colors text-sm"
+        {/* Right sidebar: vertical slide thumbnail strip */}
+        <div
+          ref={stripRef}
+          className="flex-shrink-0 w-32 flex flex-col gap-2 px-3 py-3 overflow-y-auto border-l border-gray-800 bg-gray-950"
+          style={{ scrollbarWidth: "thin" }}
         >
-          ← Previous
-        </button>
-        <span className="text-gray-500 text-sm w-28 text-center">
-          {current + 1} / {slides.length}
-        </span>
-        <button
-          onClick={goNext}
-          disabled={current === slides.length - 1}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 text-white rounded-lg font-medium transition-colors text-sm"
-        >
-          Next →
-        </button>
-      </div>
-
-      {/* Slide thumbnail strip */}
-      <div
-        ref={stripRef}
-        className="flex-shrink-0 flex gap-2 px-4 py-3 overflow-x-auto border-t border-gray-800 bg-gray-950"
-        style={{ scrollbarWidth: "thin" }}
-      >
-        {slides.map((slide, i) => {
-          const isFirstInSection =
-            slide.section &&
-            (i === 0 || slides[i - 1].sectionGroup !== slide.sectionGroup);
-          return (
-            <div key={slide.id} className="flex-shrink-0 flex flex-col items-center gap-1">
-              {isFirstInSection ? (
-                <span className="text-[9px] text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded whitespace-nowrap">
-                  {slide.section}
-                </span>
-              ) : (
-                <span className="h-[18px]" />
-              )}
-              <button
-                onClick={() => goTo(i)}
-                className={`rounded overflow-hidden border-2 transition-all ${
-                  i === current
-                    ? "border-blue-500 scale-105 shadow-md shadow-blue-900/40"
-                    : "border-transparent opacity-60 hover:opacity-100 hover:border-gray-600"
-                }`}
-                style={{ width: 96, height: 54, background: resolveBackground(slide.background) }}
-              >
-                <div className="w-full h-full flex items-center justify-center p-1">
-                  <span className="text-white text-[7px] leading-tight text-center line-clamp-3 font-medium drop-shadow">
-                    {slide.text || "…"}
+          {slides.map((slide, i) => {
+            const isFirstInSection =
+              slide.section &&
+              (i === 0 || slides[i - 1].sectionGroup !== slide.sectionGroup);
+            return (
+              <div key={slide.id} className="flex-shrink-0 flex flex-col items-center gap-1">
+                {isFirstInSection && (
+                  <span className="text-[9px] text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded whitespace-nowrap mt-1">
+                    {slide.section}
                   </span>
-                </div>
-              </button>
-            </div>
-          );
-        })}
+                )}
+                <button
+                  onClick={() => goTo(i)}
+                  className={`w-full rounded overflow-hidden border-2 transition-all ${
+                    i === current
+                      ? "border-blue-500 shadow-md shadow-blue-900/40"
+                      : "border-transparent opacity-60 hover:opacity-100 hover:border-gray-600"
+                  }`}
+                  style={{ aspectRatio: "16/9", background: resolveBackground(slide.background) }}
+                >
+                  <div className="w-full h-full flex items-center justify-center p-1">
+                    <span className="text-white text-[7px] leading-tight text-center line-clamp-3 font-medium drop-shadow">
+                      {slide.text || "…"}
+                    </span>
+                  </div>
+                </button>
+                <span className={`text-[9px] ${i === current ? "text-gray-300" : "text-gray-600"}`}>
+                  {i + 1}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
