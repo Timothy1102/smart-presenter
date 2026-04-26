@@ -50,6 +50,11 @@ export function SetlistCard({ setlist }: { setlist: SetlistSummary }) {
         <span className="text-xs text-white/35">
           {setlist._count.items} song{setlist._count.items !== 1 ? "s" : ""} · {date}
         </span>
+        {setlist.items.length > 0 && (
+          <span className="text-xs text-white/25 block mt-0.5 truncate">
+            {setlist.items.map((i) => i.presentation.title).join(" → ")}
+          </span>
+        )}
       </Link>
 
       <div className="flex items-center gap-1.5 shrink-0">

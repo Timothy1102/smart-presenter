@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { PresentationList } from "@/components/library/PresentationList";
-import { SetlistCard } from "@/components/setlist/SetlistCard";
-import { SetlistSummary } from "@/types";
+import { LibraryTabs } from "@/components/library/LibraryTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +12,13 @@ export default async function LibraryPage() {
     }),
     prisma.setlist.findMany({
       orderBy: { updatedAt: "desc" },
-      include: { _count: { select: { items: true } } },
+      include: {
+        _count: { select: { items: true } },
+        items: {
+          orderBy: { order: "asc" },
+          include: { presentation: { select: { title: true } } },
+        },
+      },
     }),
   ]);
 
@@ -63,38 +67,8 @@ export default async function LibraryPage() {
         </header>
 
         {/* Main content */}
-        <main className="flex-1 px-4 pb-12 max-w-5xl mx-auto w-full space-y-8">
-          {/* Setlists section */}
-          {setlists.length > 0 && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md p-6 shadow-2xl">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-white/80 text-sm font-semibold uppercase tracking-widest">
-                  Setlists
-                </h2>
-                <span className="text-white/40 text-xs">
-                  {setlists.length} setlist{setlists.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="flex flex-col divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden">
-                {(setlists as SetlistSummary[]).map((s) => (
-                  <SetlistCard key={s.id} setlist={s} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Library section */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-white/80 text-sm font-semibold uppercase tracking-widest">
-                Library
-              </h2>
-              <span className="text-white/40 text-xs">
-                {presentations.length} presentation{presentations.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <PresentationList presentations={presentations} />
-          </div>
+        <main className="flex-1 px-4 pb-12 max-w-5xl mx-auto w-full">
+          <LibraryTabs presentations={presentations} setlists={setlists} />
         </main>
       </div>
     </div>

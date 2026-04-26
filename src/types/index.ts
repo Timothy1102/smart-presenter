@@ -63,6 +63,7 @@ export type SetlistSummary = {
   createdAt: Date | string;
   updatedAt: Date | string;
   _count: { items: number };
+  items: { presentation: { title: string } }[];
 };
 
 // ─── Song Import Types ──────────────────────────────────────────────────────
