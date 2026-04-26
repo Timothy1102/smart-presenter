@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PresentationList } from "@/components/library/PresentationList";
+import { SetlistCard } from "@/components/setlist/SetlistCard";
+import { SetlistSummary } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function LibraryPage() {
-  const presentations = await prisma.presentation.findMany({
-    orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { slides: true } } },
-  });
+  const [presentations, setlists] = await Promise.all([
+    prisma.presentation.findMany({
+      orderBy: { updatedAt: "desc" },
+      include: { _count: { select: { slides: true } } },
+    }),
+    prisma.setlist.findMany({
+      orderBy: { updatedAt: "desc" },
+      include: { _count: { select: { items: true } } },
+    }),
+  ]);
 
   return (
     <div
@@ -40,6 +48,12 @@ export default async function LibraryPage() {
               + New Presentation
             </Link>
             <Link
+              href="/setlists/new"
+              className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-black/30 hover:shadow-xl hover:scale-[1.02] active:scale-[0.99]"
+            >
+              + New Setlist
+            </Link>
+            <Link
               href="/import"
               className="px-6 py-2.5 bg-white/10 border border-white/20 text-white rounded-xl font-semibold text-sm hover:bg-white/20 transition-all backdrop-blur-sm"
             >
@@ -48,8 +62,28 @@ export default async function LibraryPage() {
           </div>
         </header>
 
-        {/* Library section */}
-        <main className="flex-1 px-4 pb-12 max-w-5xl mx-auto w-full">
+        {/* Main content */}
+        <main className="flex-1 px-4 pb-12 max-w-5xl mx-auto w-full space-y-8">
+          {/* Setlists section */}
+          {setlists.length > 0 && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-white/80 text-sm font-semibold uppercase tracking-widest">
+                  Setlists
+                </h2>
+                <span className="text-white/40 text-xs">
+                  {setlists.length} setlist{setlists.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="flex flex-col divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden">
+                {(setlists as SetlistSummary[]).map((s) => (
+                  <SetlistCard key={s.id} setlist={s} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Library section */}
           <div className="bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-white/80 text-sm font-semibold uppercase tracking-widest">

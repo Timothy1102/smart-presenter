@@ -33,6 +33,38 @@ export interface SlideInput {
   sectionGroup?: number | null;
 }
 
+// ─── Setlist Types ──────────────────────────────────────────────────────────
+
+export interface SetlistItem {
+  id: string;
+  order: number;
+  presentationId: string;
+  presentation: PresentationSummary;
+}
+
+export interface SetlistItemWithSlides {
+  id: string;
+  order: number;
+  presentationId: string;
+  presentation: Presentation;
+}
+
+export interface Setlist {
+  id: string;
+  title: string;
+  items: SetlistItem[];
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export type SetlistSummary = {
+  id: string;
+  title: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  _count: { items: number };
+};
+
 // ─── Song Import Types ──────────────────────────────────────────────────────
 
 export interface SongData {

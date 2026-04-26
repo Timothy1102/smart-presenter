@@ -8,11 +8,31 @@ datasource db {
 }
 
 model Presentation {
-  id        String   @id @default(cuid())
+  id           String        @id @default(cuid())
+  title        String
+  slides       Slide[]
+  setlistItems SetlistItem[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Setlist {
+  id        String        @id @default(cuid())
   title     String
-  slides    Slide[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  items     SetlistItem[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model SetlistItem {
+  id             String       @id @default(cuid())
+  order          Int
+  setlistId      String
+  setlist        Setlist      @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+  presentationId String
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+
+  @@index([setlistId, order])
 }
 
 model Slide {
