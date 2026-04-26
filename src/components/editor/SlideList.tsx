@@ -18,6 +18,7 @@ import {
 import { SlideInput } from "@/types";
 import { SlideItem } from "./SlideItem";
 import { LyricsImporter } from "./LyricsImporter";
+import { PptxImporter } from "./PptxImporter";
 
 interface SlidWithId extends SlideInput {
   id: string;
@@ -93,6 +94,7 @@ export function SlideList({
       {/* Actions */}
       <div className="flex-shrink-0 pt-3 space-y-2 border-t border-gray-800 mt-2">
         <LyricsImporter onImport={onImport} />
+        <PptxImporter onImport={onImport} />
         <button
           onClick={onAddSlide}
           className="w-full py-2 text-sm border border-dashed border-gray-700 hover:border-gray-500 text-gray-400 hover:text-gray-200 rounded-lg transition-colors"
