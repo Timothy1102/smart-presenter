@@ -29,14 +29,68 @@ function formatTime(seconds: number): string {
 export function PresenterView({ slides, title, presentationId }: PresenterViewProps) {
   const [current, setCurrent] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [audienceWindowOpen, setAudienceWindowOpen] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
+  const audienceWindowRef = useRef<Window | null>(null);
 
   // Timer
   useEffect(() => {
     const id = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Track audience window closed
+  useEffect(() => {
+    if (!audienceWindowOpen) return;
+    const id = setInterval(() => {
+      if (audienceWindowRef.current?.closed) {
+        setAudienceWindowOpen(false);
+        audienceWindowRef.current = null;
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [audienceWindowOpen]);
+
+  // Launch audience display on external screen
+  const launchAudienceDisplay = useCallback(async () => {
+    // If already open, focus it
+    if (audienceWindowRef.current && !audienceWindowRef.current.closed) {
+      audienceWindowRef.current.focus();
+      return;
+    }
+
+    const url = `/presentations/${presentationId}/present`;
+
+    // Try Window Management API to detect external screens
+    try {
+      if ("getScreenDetails" in window) {
+        const screenDetails = await (window as unknown as { getScreenDetails: () => Promise<{ screens: Array<{ left: number; top: number; availWidth: number; availHeight: number; isPrimary: boolean }> }> }).getScreenDetails();
+        const externalScreen = screenDetails.screens.find((s) => !s.isPrimary);
+        if (externalScreen) {
+          const w = window.open(
+            url,
+            "audience-display",
+            `left=${externalScreen.left},top=${externalScreen.top},width=${externalScreen.availWidth},height=${externalScreen.availHeight}`
+          );
+          if (w) {
+            audienceWindowRef.current = w;
+            setAudienceWindowOpen(true);
+            return;
+          }
+        }
+      }
+    } catch {
+      // Permission denied or API unavailable — fall through
+    }
+
+    // Fallback: open a regular popup
+    const w = window.open(url, "audience-display", "popup");
+    if (w) {
+      audienceWindowRef.current = w;
+      setAudienceWindowOpen(true);
+    }
+  }, [presentationId]);
 
   // Open BroadcastChannel — sync with audience display
   useEffect(() => {
@@ -149,9 +203,19 @@ export function PresenterView({ slides, title, presentationId }: PresenterViewPr
 
       {/* Top bar */}
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3 bg-gray-950 border-b border-gray-800">
-        <div>
+        <div className="flex items-center gap-3">
           <span className="text-white font-semibold">{title}</span>
-          <span className="text-gray-500 text-sm ml-3">Presenter View</span>
+          <span className="text-gray-500 text-sm">Presenter View</span>
+          <button
+            onClick={launchAudienceDisplay}
+            className={`ml-2 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+              audienceWindowOpen
+                ? "bg-green-600/20 text-green-400 border border-green-600/40 hover:bg-green-600/30"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
+            {audienceWindowOpen ? "Audience Display Live" : "Launch Audience Display"}
+          </button>
         </div>
         <div className="flex items-center gap-6">
           <span className="text-gray-400 text-sm font-mono">⏱ {formatTime(elapsed)}</span>
