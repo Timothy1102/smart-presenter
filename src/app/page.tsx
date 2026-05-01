@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { LibraryTabs } from "@/components/library/LibraryTabs";
+import { UserGuide } from "@/components/library/UserGuide";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,7 @@ export default async function LibraryPage() {
             >
               Import Songs
             </Link>
+            <UserGuide />
           </div>
         </header>
 
