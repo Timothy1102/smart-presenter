@@ -19,6 +19,7 @@ export interface Presentation {
 export type PresentationSummary = {
   id: string;
   title: string;
+  isPinned: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
   _count: { slides: number };

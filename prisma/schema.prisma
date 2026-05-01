@@ -10,6 +10,7 @@ datasource db {
 model Presentation {
   id           String        @id @default(cuid())
   title        String
+  isPinned     Boolean       @default(false)
   slides       Slide[]
   setlistItems SetlistItem[]
   createdAt    DateTime      @default(now())

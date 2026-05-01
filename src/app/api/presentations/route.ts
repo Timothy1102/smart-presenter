@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     const presentations = await prisma.presentation.findMany({
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
       include: { _count: { select: { slides: true } } },
     });
     return NextResponse.json(presentations);

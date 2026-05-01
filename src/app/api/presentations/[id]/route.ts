@@ -32,14 +32,17 @@ export async function PUT(request: Request, { params }: Params) {
   const { id } = await params;
   try {
     const body = await request.json();
-    const { title, slides }: { title?: string; slides?: SlideInput[] } = body;
+    const { title, slides, isPinned }: { title?: string; slides?: SlideInput[]; isPinned?: boolean } = body;
 
     const result = await prisma.$transaction(async (tx) => {
-      // Update title if provided
-      if (title !== undefined) {
+      // Update title and/or isPinned if provided
+      if (title !== undefined || isPinned !== undefined) {
         await tx.presentation.update({
           where: { id },
-          data: { title: title.trim() },
+          data: {
+            ...(title !== undefined && { title: title.trim() }),
+            ...(isPinned !== undefined && { isPinned }),
+          },
         });
       }
 

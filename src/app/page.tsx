@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function LibraryPage() {
   const [presentations, setlists] = await Promise.all([
     prisma.presentation.findMany({
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
       include: { _count: { select: { slides: true } } },
     }),
     prisma.setlist.findMany({
