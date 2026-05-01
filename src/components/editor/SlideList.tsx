@@ -26,22 +26,24 @@ interface SlidWithId extends SlideInput {
 
 interface SlideListProps {
   slides: SlidWithId[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedIds: string[];
+  onSelect: (id: string, shiftKey?: boolean) => void;
   onDelete: (id: string) => void;
   onReorder: (slides: SlidWithId[]) => void;
   onAddSlide: () => void;
   onImport: (texts: string[]) => void;
+  onDuplicate: () => void;
 }
 
 export function SlideList({
   slides,
-  selectedId,
+  selectedIds,
   onSelect,
   onDelete,
   onReorder,
   onAddSlide,
   onImport,
+  onDuplicate,
 }: SlideListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -76,8 +78,8 @@ export function SlideList({
                 key={slide.id}
                 slide={slide}
                 index={index}
-                isSelected={selectedId === slide.id}
-                onSelect={() => onSelect(slide.id)}
+                isSelected={selectedIds.includes(slide.id)}
+                onSelect={(e) => onSelect(slide.id, e?.shiftKey)}
                 onDelete={() => onDelete(slide.id)}
               />
             ))}
@@ -93,6 +95,14 @@ export function SlideList({
 
       {/* Actions */}
       <div className="flex-shrink-0 pt-3 space-y-2 border-t border-gray-800 mt-2">
+        {selectedIds.length > 0 && (
+          <button
+            onClick={onDuplicate}
+            className="w-full py-2 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg transition-colors"
+          >
+            Duplicate {selectedIds.length > 1 ? `${selectedIds.length} slides` : "slide"}
+          </button>
+        )}
         <LyricsImporter onImport={onImport} />
         <PptxImporter onImport={onImport} />
         <button

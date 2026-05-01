@@ -9,7 +9,7 @@ interface SlideItemProps {
   slide: SlideInput & { id: string };
   index: number;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e?: React.MouseEvent) => void;
   onDelete: () => void;
 }
 
@@ -38,7 +38,7 @@ export function SlideItem({ slide, index, isSelected, onSelect, onDelete }: Slid
           ? "border-blue-500 bg-blue-950/40"
           : "border-transparent hover:border-gray-700 hover:bg-gray-800/50"
       }`}
-      onClick={onSelect}
+      onClick={(e) => onSelect(e)}
     >
       {/* Drag handle */}
       <button

@@ -17,7 +17,7 @@ interface SlideWithId extends SlideInput {
 interface EditorState {
   title: string;
   slides: SlideWithId[];
-  selectedId: string | null;
+  selectedIds: string[];
   isDirty: boolean;
   isSaving: boolean;
   isLoading: boolean;
@@ -33,8 +33,9 @@ type EditorAction =
   | { type: "UPDATE_SLIDE"; payload: SlideWithId }
   | { type: "DELETE_SLIDE"; payload: string }
   | { type: "REORDER_SLIDES"; payload: SlideWithId[] }
-  | { type: "SELECT_SLIDE"; payload: string | null }
+  | { type: "SELECT_SLIDE"; payload: { id: string; shiftKey?: boolean } }
   | { type: "SET_ALL_BACKGROUNDS"; payload: string }
+  | { type: "DUPLICATE_SLIDES" }
   | { type: "SAVE_START" }
   | { type: "SAVE_SUCCESS"; payload: SlideWithId[] };
 
@@ -49,7 +50,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         ...state,
         title: action.payload.title,
         slides: action.payload.slides,
-        selectedId: action.payload.slides[0]?.id ?? null,
+        selectedIds: action.payload.slides[0] ? [action.payload.slides[0].id] : [],
         isLoading: false,
         isDirty: false,
       };
@@ -68,7 +69,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         slides,
-        selectedId: newSlides[0]?.id ?? state.selectedId,
+        selectedIds: newSlides[0] ? [newSlides[0].id] : state.selectedIds,
         isDirty: true,
       };
     }
@@ -82,7 +83,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return {
         ...state,
         slides: [...state.slides, blank],
-        selectedId: blank.id,
+        selectedIds: [blank.id],
         isDirty: true,
       };
     }
@@ -96,11 +97,15 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       };
     case "DELETE_SLIDE": {
       const slides = state.slides.filter((s) => s.id !== action.payload);
-      const selectedId =
-        state.selectedId === action.payload
-          ? (slides[0]?.id ?? null)
-          : state.selectedId;
-      return { ...state, slides, selectedId, isDirty: true };
+      const selectedIds = state.selectedIds.includes(action.payload)
+        ? state.selectedIds.filter((sid) => sid !== action.payload)
+        : state.selectedIds;
+      return {
+        ...state,
+        slides,
+        selectedIds: selectedIds.length > 0 ? selectedIds : (slides[0] ? [slides[0].id] : []),
+        isDirty: true,
+      };
     }
     case "SET_ALL_BACKGROUNDS":
       return {
@@ -110,8 +115,46 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       };
     case "REORDER_SLIDES":
       return { ...state, slides: action.payload, isDirty: true };
-    case "SELECT_SLIDE":
-      return { ...state, selectedId: action.payload };
+    case "SELECT_SLIDE": {
+      const { id: clickedId, shiftKey } = action.payload;
+      if (shiftKey && state.selectedIds.length > 0) {
+        // Range select: from last selected to clicked
+        const anchorId = state.selectedIds[state.selectedIds.length - 1];
+        const anchorIdx = state.slides.findIndex((s) => s.id === anchorId);
+        const clickedIdx = state.slides.findIndex((s) => s.id === clickedId);
+        const start = Math.min(anchorIdx, clickedIdx);
+        const end = Math.max(anchorIdx, clickedIdx);
+        const rangeIds = state.slides.slice(start, end + 1).map((s) => s.id);
+        // Merge with existing selection, preserving anchor
+        const merged = [...state.selectedIds];
+        for (const rid of rangeIds) {
+          if (!merged.includes(rid)) merged.push(rid);
+        }
+        return { ...state, selectedIds: merged };
+      }
+      return { ...state, selectedIds: [clickedId] };
+    }
+    case "DUPLICATE_SLIDES": {
+      if (state.selectedIds.length === 0) return state;
+      // Duplicate selected slides in order, inserting after the last selected
+      const selectedInOrder = state.slides.filter((s) => state.selectedIds.includes(s.id));
+      const lastSelectedIdx = state.slides.findIndex(
+        (s) => s.id === selectedInOrder[selectedInOrder.length - 1].id
+      );
+      const duplicates = selectedInOrder.map((s) => ({
+        ...s,
+        id: crypto.randomUUID(),
+        order: 0,
+      }));
+      const newSlides = [...state.slides];
+      newSlides.splice(lastSelectedIdx + 1, 0, ...duplicates);
+      return {
+        ...state,
+        slides: newSlides,
+        selectedIds: duplicates.map((d) => d.id),
+        isDirty: true,
+      };
+    }
     case "SAVE_START":
       return { ...state, isSaving: true };
     case "SAVE_SUCCESS":
@@ -124,7 +167,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 const initialState: EditorState = {
   title: "",
   slides: [],
-  selectedId: null,
+  selectedIds: [],
   isDirty: false,
   isSaving: false,
   isLoading: true,
@@ -186,7 +229,10 @@ export default function EditPage() {
     dispatch({ type: "SAVE_SUCCESS", payload: data.slides });
   }, [id, state.title, state.slides]);
 
-  const selectedSlide = state.slides.find((s) => s.id === state.selectedId) ?? null;
+  const selectedSlide =
+    state.selectedIds.length === 1
+      ? (state.slides.find((s) => s.id === state.selectedIds[0]) ?? null)
+      : null;
 
   if (state.isLoading) {
     return (
@@ -266,18 +312,23 @@ export default function EditPage() {
           </p>
           <SlideList
             slides={state.slides}
-            selectedId={state.selectedId}
-            onSelect={(sid) => dispatch({ type: "SELECT_SLIDE", payload: sid })}
+            selectedIds={state.selectedIds}
+            onSelect={(id, shiftKey) => dispatch({ type: "SELECT_SLIDE", payload: { id, shiftKey } })}
             onDelete={(sid) => dispatch({ type: "DELETE_SLIDE", payload: sid })}
             onReorder={(slides) => dispatch({ type: "REORDER_SLIDES", payload: slides })}
             onAddSlide={() => dispatch({ type: "ADD_BLANK_SLIDE" })}
             onImport={(texts) => dispatch({ type: "ADD_SLIDES", payload: texts })}
+            onDuplicate={() => dispatch({ type: "DUPLICATE_SLIDES" })}
           />
         </aside>
 
         {/* Main editor panel */}
         <main className="flex-1 p-6 overflow-y-auto">
-          {selectedSlide ? (
+          {state.selectedIds.length > 1 ? (
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+              {state.selectedIds.length} slides selected
+            </div>
+          ) : selectedSlide ? (
             <SlideEditor
               slide={selectedSlide}
               onUpdate={(slide) =>
