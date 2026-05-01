@@ -32,9 +32,11 @@ function buildPreviews(data: SongsImportFile): SongPreview[] {
 export default function ImportPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<SongPreview[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [results, setResults] = useState<{ title: string; id: string }[]>([]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -59,6 +61,43 @@ export default function ImportPage() {
       }
     };
     reader.readAsText(file);
+  }
+
+  async function handlePdfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setPreviews(null);
+    setResults([]);
+    setConverting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/import/pdf", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to convert PDF");
+        return;
+      }
+      const validation = validateSongsImport(data);
+      if (!validation.valid) {
+        setError(`Converted JSON is invalid: ${validation.error}`);
+        return;
+      }
+      setPreviews(buildPreviews(validation.data));
+    } catch (err) {
+      setError(
+        `Failed to convert PDF: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setConverting(false);
+      if (pdfRef.current) pdfRef.current.value = "";
+    }
   }
 
   async function handleImport() {
@@ -101,7 +140,53 @@ export default function ImportPage() {
           <h1 className="text-2xl font-bold text-white">Import Songs</h1>
         </div>
 
-        {/* File upload */}
+        {/* PDF upload (auto-converted via Gemini) */}
+        <div className="mb-4">
+          <label
+            onClick={() => !converting && pdfRef.current?.click()}
+            className={`flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-xl transition-colors ${
+              converting
+                ? "border-blue-700 bg-blue-950/20 cursor-wait"
+                : "border-gray-700 hover:border-blue-600 cursor-pointer"
+            }`}
+          >
+            {converting ? (
+              <>
+                <span className="text-blue-300 text-sm mb-1">
+                  Converting PDF via Gemini…
+                </span>
+                <span className="text-gray-600 text-xs">
+                  This can take 10–30 seconds
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-300 text-sm mb-1">
+                  Click to select a PDF — converted via AI
+                </span>
+                <span className="text-gray-600 text-xs">
+                  Worship song sheet (chords + lyrics)
+                </span>
+              </>
+            )}
+          </label>
+          <input
+            ref={pdfRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={handlePdfChange}
+            disabled={converting}
+            className="hidden"
+          />
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-gray-800" />
+          <span className="text-xs text-gray-600 uppercase tracking-wider">or</span>
+          <div className="flex-1 h-px bg-gray-800" />
+        </div>
+
+        {/* JSON upload */}
         <div className="mb-6">
           <label
             onClick={() => fileRef.current?.click()}
