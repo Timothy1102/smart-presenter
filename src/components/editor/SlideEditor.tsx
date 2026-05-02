@@ -12,7 +12,7 @@ interface SlideEditorProps {
 
 export function SlideEditor({ slide, onUpdate }: SlideEditorProps) {
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col gap-4">
       {/* Preview */}
       <div
         className="relative rounded-xl overflow-hidden flex-shrink-0"

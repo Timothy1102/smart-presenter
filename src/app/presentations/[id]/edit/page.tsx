@@ -304,9 +304,9 @@ export default function EditPage() {
       </header>
 
       {/* Editor body */}
-      <div className="flex flex-1 min-h-0">
+      <div className="relative">
         {/* Slides sidebar */}
-        <aside className="w-64 flex-shrink-0 border-r border-gray-800 p-3 overflow-hidden flex flex-col">
+        <aside className="absolute top-0 left-0 bottom-0 w-64 border-r border-gray-800 p-3 overflow-y-auto flex flex-col">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 flex-shrink-0">
             Slides ({state.slides.length})
           </p>
@@ -323,9 +323,9 @@ export default function EditPage() {
         </aside>
 
         {/* Main editor panel */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="ml-64 p-6">
           {state.selectedIds.length > 1 ? (
-            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
               {state.selectedIds.length} slides selected
             </div>
           ) : selectedSlide ? (
@@ -336,7 +336,7 @@ export default function EditPage() {
               }
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-600 text-sm">
+            <div className="flex items-center justify-center py-20 text-gray-600 text-sm">
               Select a slide to edit, or add one using the panel on the left.
             </div>
           )}
