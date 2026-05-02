@@ -16,7 +16,7 @@ export const SLIDE_CONFIG = {
 
   // Text appearance
   fontFamily: "'Inter', sans-serif",
-  fontSize: "3.5rem",
+  fontSize: "4rem",
   fontWeight: "600",
   lineHeight: "1.35",
   textColor: "#ffffff",
