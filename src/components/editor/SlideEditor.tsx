@@ -22,7 +22,11 @@ export function SlideEditor({ slide, onUpdate }: SlideEditorProps) {
           className="absolute inset-0 flex items-center justify-center"
           style={{ padding: "2rem" }}
         >
-          <p
+          <textarea
+            value={slide.text}
+            onChange={(e) => onUpdate({ ...slide, text: e.target.value })}
+            placeholder="Enter slide text…"
+            className="w-full bg-transparent border-none outline-none resize-none placeholder-white/40"
             style={{
               fontFamily: SLIDE_CONFIG.fontFamily,
               fontSize: "clamp(1rem, 3vw, 2rem)",
@@ -30,13 +34,11 @@ export function SlideEditor({ slide, onUpdate }: SlideEditorProps) {
               lineHeight: SLIDE_CONFIG.lineHeight,
               color: SLIDE_CONFIG.textColor,
               textShadow: SLIDE_CONFIG.textShadow,
-              textAlign: SLIDE_CONFIG.textAlign,
-              whiteSpace: "pre-wrap",
+              textAlign: SLIDE_CONFIG.textAlign as React.CSSProperties["textAlign"],
               wordBreak: "break-word",
             }}
-          >
-            {slide.text || <span className="opacity-40">Empty slide</span>}
-          </p>
+            rows={4}
+          />
         </div>
       </div>
 
