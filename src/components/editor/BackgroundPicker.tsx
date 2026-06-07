@@ -29,18 +29,6 @@ export function BackgroundPicker({ value, onChange }: BackgroundPickerProps) {
           />
         ))}
       </div>
-      <div>
-        <input
-          type="text"
-          placeholder="Or paste an image URL…"
-          defaultValue={urlValue}
-          onBlur={(e) => {
-            const v = e.target.value.trim();
-            if (v) onChange(v);
-          }}
-          className="w-full px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-        />
-      </div>
     </div>
   );
 }

@@ -8,9 +8,11 @@ import { SLIDE_CONFIG } from "@/lib/slide-config";
 interface SlideEditorProps {
   slide: SlideInput;
   onUpdate: (slide: SlideInput) => void;
+  onSectionChange: (section: string | null) => void;
+  sectionOptions: string[];
 }
 
-export function SlideEditor({ slide, onUpdate }: SlideEditorProps) {
+export function SlideEditor({ slide, onUpdate, onSectionChange, sectionOptions }: SlideEditorProps) {
   return (
     <div className="flex flex-col gap-4">
       {/* Preview */}
@@ -56,11 +58,31 @@ export function SlideEditor({ slide, onUpdate }: SlideEditorProps) {
         />
       </div>
 
+      {/* Section */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+          Section
+        </label>
+        <input
+          type="text"
+          list="section-options"
+          value={slide.section ?? ""}
+          onChange={(e) => onSectionChange(e.target.value.trim() || null)}
+          placeholder="e.g. Verse 1, Chorus…"
+          className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        />
+        <datalist id="section-options">
+          {sectionOptions.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+      </div>
+
       {/* Background picker */}
-      <BackgroundPicker
+      {/* <BackgroundPicker
         value={slide.background}
         onChange={(bg) => onUpdate({ ...slide, background: bg })}
-      />
+      /> */}
     </div>
   );
 }

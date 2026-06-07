@@ -34,6 +34,7 @@ type EditorAction =
   | { type: "DELETE_SLIDE"; payload: string }
   | { type: "REORDER_SLIDES"; payload: SlideWithId[] }
   | { type: "SELECT_SLIDE"; payload: { id: string; shiftKey?: boolean } }
+  | { type: "SET_SECTION"; payload: { ids: string[]; section: string | null } }
   | { type: "SET_ALL_BACKGROUNDS"; payload: string }
   | { type: "DUPLICATE_SLIDES" }
   | { type: "SAVE_START" }
@@ -42,6 +43,43 @@ type EditorAction =
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_BACKGROUND = DEFAULT_SLIDE_BACKGROUND;
+
+/**
+ * Apply a section label to a set of slides and assign `sectionGroup` values.
+ *
+ * Each contiguous run of affected slides (in slide order) gets a fresh, unique
+ * group number so the presenter treats it as one navigable section block.
+ * Non-contiguous selections produce separate groups. Unaffected slides — and
+ * their existing groups (e.g. from the song importer) — are left untouched, so
+ * adjacent same-label sections keep their distinct groups. Passing
+ * `section === null` clears both the label and the group on the affected slides.
+ */
+function applySectionToSlides(
+  slides: SlideWithId[],
+  ids: string[],
+  section: string | null
+): SlideWithId[] {
+  const affected = new Set(ids);
+  let maxGroup = -1;
+  for (const s of slides) {
+    if (s.sectionGroup != null && s.sectionGroup > maxGroup) maxGroup = s.sectionGroup;
+  }
+  let nextGroup = maxGroup + 1;
+  let runGroup: number | null = null;
+
+  return slides.map((s) => {
+    if (!affected.has(s.id)) {
+      runGroup = null; // a gap ends the current run
+      return s;
+    }
+    if (section === null) {
+      runGroup = null;
+      return { ...s, section: null, sectionGroup: null };
+    }
+    if (runGroup === null) runGroup = nextGroup++;
+    return { ...s, section, sectionGroup: runGroup };
+  });
+}
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
@@ -107,6 +145,12 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         isDirty: true,
       };
     }
+    case "SET_SECTION":
+      return {
+        ...state,
+        slides: applySectionToSlides(state.slides, action.payload.ids, action.payload.section),
+        isDirty: true,
+      };
     case "SET_ALL_BACKGROUNDS":
       return {
         ...state,
@@ -263,6 +307,21 @@ export default function EditPage() {
       ? (state.slides.find((s) => s.id === state.selectedIds[0]) ?? null)
       : null;
 
+  // Existing section labels in this deck, for autocomplete suggestions.
+  const sectionOptions = Array.from(
+    new Set(
+      state.slides
+        .map((s) => s.section?.trim())
+        .filter((s): s is string => !!s)
+    )
+  ).sort();
+
+  const setSection = useCallback(
+    (ids: string[], section: string | null) =>
+      dispatch({ type: "SET_SECTION", payload: { ids, section } }),
+    []
+  );
+
   if (state.isLoading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center text-gray-500">
@@ -313,7 +372,7 @@ export default function EditPage() {
           >
             {isUploading ? "Uploading…" : "Upload background for all slides"}
           </button>
-          <button
+          {/* <button
             onClick={() => {
               const url = prompt("Image URL to apply to all slides:", DEFAULT_SLIDE_BACKGROUND);
               if (url?.trim()) dispatch({ type: "SET_ALL_BACKGROUNDS", payload: url.trim() });
@@ -321,7 +380,7 @@ export default function EditPage() {
             className="px-4 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition-colors"
           >
             Set background URL for all slides
-          </button>
+          </button> */}
           <button
             onClick={handleSave}
             disabled={state.isSaving || !state.isDirty}
@@ -368,15 +427,20 @@ export default function EditPage() {
         {/* Main editor panel */}
         <main className="ml-64 p-6">
           {state.selectedIds.length > 1 ? (
-            <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
-              {state.selectedIds.length} slides selected
-            </div>
+            <MultiSlideSection
+              selectedIds={state.selectedIds}
+              slides={state.slides}
+              sectionOptions={sectionOptions}
+              onApply={setSection}
+            />
           ) : selectedSlide ? (
             <SlideEditor
               slide={selectedSlide}
+              sectionOptions={sectionOptions}
               onUpdate={(slide) =>
                 dispatch({ type: "UPDATE_SLIDE", payload: slide as SlideWithId })
               }
+              onSectionChange={(section) => setSection([selectedSlide.id], section)}
             />
           ) : (
             <div className="flex items-center justify-center py-20 text-gray-600 text-sm">
@@ -384,6 +448,86 @@ export default function EditPage() {
             </div>
           )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+// ─── Multi-slide section editor ────────────────────────────────────────────────
+
+function MultiSlideSection({
+  selectedIds,
+  slides,
+  sectionOptions,
+  onApply,
+}: {
+  selectedIds: string[];
+  slides: SlideWithId[];
+  sectionOptions: string[];
+  onApply: (ids: string[], section: string | null) => void;
+}) {
+  // Prefill with the common section if all selected slides already share one.
+  const selected = slides.filter((s) => selectedIds.includes(s.id));
+  const sections = new Set(selected.map((s) => s.section ?? ""));
+  const common = sections.size === 1 ? [...sections][0] : "";
+  const [value, setValue] = useState(common);
+
+  // Re-sync when the selection changes.
+  const selectionKey = selectedIds.join(",");
+  const prevKey = useRef(selectionKey);
+  if (prevKey.current !== selectionKey) {
+    prevKey.current = selectionKey;
+    setValue(common);
+  }
+
+  const apply = () => {
+    const trimmed = value.trim();
+    onApply(selectedIds, trimmed || null);
+  };
+
+  return (
+    <div className="max-w-md mx-auto flex flex-col gap-4 py-10">
+      <p className="text-center text-gray-400 text-sm">
+        {selectedIds.length} slides selected
+      </p>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+          Section
+        </label>
+        <p className="text-xs text-gray-500 mb-1">
+          Label these slides (e.g. Verse 1, Chorus). Used for navigation in the presenter view.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            list="section-options"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && apply()}
+            placeholder={sections.size > 1 ? "Mixed — type to set all" : "Section name…"}
+            className="flex-1 px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={apply}
+            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          >
+            Apply
+          </button>
+          <button
+            onClick={() => {
+              setValue("");
+              onApply(selectedIds, null);
+            }}
+            className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+        <datalist id="section-options">
+          {sectionOptions.map((opt) => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
       </div>
     </div>
   );
