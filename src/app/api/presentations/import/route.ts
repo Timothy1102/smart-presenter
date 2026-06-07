@@ -21,32 +21,25 @@ export async function POST(request: Request) {
 
     const slides = songToSlides(song);
 
-    const presentation = await prisma.$transaction(async (tx) => {
-      const pres = await tx.presentation.create({
-        data: { title: song.title.trim() },
-      });
-
-      for (const slide of slides) {
-        await tx.slide.create({
-          data: {
+    const presentation = await prisma.presentation.create({
+      data: {
+        title: song.title.trim(),
+        slides: {
+          create: slides.map((slide) => ({
             text: slide.text,
             background: slide.background,
             order: slide.order,
             section: slide.section,
             sectionGroup: slide.sectionGroup,
-            presentationId: pres.id,
-          },
-        });
-      }
-
-      return tx.presentation.findUnique({
-        where: { id: pres.id },
-        include: { slides: { orderBy: { order: "asc" } } },
-      });
+          })),
+        },
+      },
+      include: { slides: { orderBy: { order: "asc" } } },
     });
 
     return NextResponse.json(presentation, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error("Failed to import song:", error);
     return NextResponse.json(
       { error: "Failed to import song" },
       { status: 500 }
