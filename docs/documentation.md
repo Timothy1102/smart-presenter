@@ -43,6 +43,7 @@ The core use case is worship/church settings: a song leader or operator creates 
 - **Slide list sidebar** — see all slides at a glance with thumbnail previews. Drag to reorder. Click to select.
 - **Slide text editor** — edit the text of any selected slide in a textarea. A live preview shows exactly how the slide will look when presented.
 - **Background picker** — choose from 6 preset dark gradient backgrounds, or paste any image URL for a custom background.
+- **Background upload** — upload an image file and apply it as the background for all slides in the presentation. Stored in Supabase Storage (production) or the local filesystem (dev). See [Background Image Uploads](#background-image-uploads).
 - **Add blank slide** — insert an empty slide anywhere (via drag-after-add).
 - **Unsaved changes indicator** — the toolbar shows "Unsaved changes" when there are pending edits, and warns before navigating away.
 - **Save** — one button saves the title and all slides to the database in a single request.
@@ -247,12 +248,25 @@ Full save of a presentation — title and all slides. Runs in a single database 
 
 ### `DELETE /api/presentations/[id]`
 
-Deletes a presentation and all its slides (cascaded by the database).
+Deletes a presentation and all its slides (cascaded by the database). Any uploaded background image files used only by this presentation's slides are also deleted from storage.
 
 **Response** `200 OK`
 ```json
 { "success": true }
 ```
+
+---
+
+### `POST /api/upload`
+
+Uploads a background image file. Accepts a `multipart/form-data` body with a single `file` field. Validates the type (JPEG, PNG, WebP, GIF, AVIF) and size (max 15 MB), stores it in Supabase Storage or the local filesystem (see [Background Image Uploads](#background-image-uploads)), and returns its public URL — which can then be saved as a slide's `background`.
+
+**Response** `201 Created`
+```json
+{ "url": "https://<ref>.supabase.co/storage/v1/object/public/backgrounds/<id>.jpg" }
+```
+
+**Errors**: `400` if the file is missing, empty, too large, or an unsupported type; `500` on storage failure.
 
 ---
 
@@ -419,13 +433,47 @@ The `presetBackgrounds` array in `slide-config.ts` defines the palette shown in 
 
 To add a new preset: add an entry to the array. To remove one: delete the entry (existing slides with that key will fall back to rendering it as a URL, showing a broken image — so consider migrating the key in the DB first).
 
+### Background Image Uploads
+
+Slides can use an uploaded image as their background, applied to all slides in a presentation via the **"Upload background for all slides"** button in the editor toolbar. Uploads go through `POST /api/upload`, which validates the file (JPEG/PNG/WebP/GIF/AVIF, max 15 MB) and stores it. The resulting URL is saved in `Slide.background` like any other image URL.
+
+`src/lib/storage.ts` is the single source of truth for where files live and picks a backend automatically:
+
+- **Supabase Storage** — used when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set. Recommended for production / serverless deployments.
+- **Local filesystem** — fallback when those vars are absent. Files are written to `public/uploads/` (gitignored) and served at `/uploads/<name>`. Works for local dev and self-hosted Node servers only.
+
+**Cleanup.** Uploaded files are deleted automatically when they are no longer referenced — when a slide's background is changed, a slide is deleted, or the whole presentation is deleted. A file is only removed once **no** slide in any presentation still references it. Cleanup runs on Save (the editor batches changes locally until saved).
+
+#### Enabling Supabase Storage
+
+1. In the Supabase dashboard, go to **Storage → New bucket**, name it `backgrounds`, and mark it **Public**. (Use a different name by setting `SUPABASE_STORAGE_BUCKET`.)
+2. Add the environment variables below to `.env.local` (and to your production host's env settings):
+
+   ```
+   SUPABASE_URL="https://<your-project-ref>.supabase.co"
+   SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+   # optional, defaults to "backgrounds"
+   SUPABASE_STORAGE_BUCKET="backgrounds"
+   ```
+
+   Both values are under **Project Settings → API**. The `service_role` key bypasses Row Level Security, so it must stay server-side only — never expose it in a `NEXT_PUBLIC_*` variable. Uploads run server-side through `/api/upload`, so the key is never sent to the browser.
+
+No schema migration or `next.config` image-domain changes are needed — backgrounds render as CSS `url(...)`, not `next/image`.
+
+---
+
 ### Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
 | `DATABASE_URL` | Yes | PostgreSQL connection string (Supabase URI format) |
+| `SUPABASE_URL` | No | Supabase project URL (e.g. `https://<ref>.supabase.co`). Enables Supabase Storage for uploaded background images. Found under **Project Settings → API → Project URL**. |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase `service_role` secret key. Server-only — used to upload/delete background images. Found under **Project Settings → API**. |
+| `SUPABASE_STORAGE_BUCKET` | No | Name of the storage bucket for background images. Defaults to `backgrounds`. |
 
 Set in `.env.local`. This file is gitignored.
+
+> **Background image storage.** When both `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set, uploaded background images are stored in Supabase Storage (the right choice for serverless/production hosts). Otherwise they fall back to the local filesystem at `public/uploads/` (fine for local dev and self-hosted Node servers, but **not** serverless hosts with ephemeral/read-only filesystems). See [Background Image Uploads](#background-image-uploads) for setup.
 
 ---
 

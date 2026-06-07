@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer, useCallback } from "react";
+import { useEffect, useReducer, useCallback, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SlideList } from "@/components/editor/SlideList";
@@ -180,6 +180,35 @@ export default function EditPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [state, dispatch] = useReducer(editorReducer, initialState);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Upload a chosen image file, then apply its URL to all slides.
+  const handleBackgroundFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // allow re-selecting the same file later
+      if (!file) return;
+
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
+        dispatch({ type: "SET_ALL_BACKGROUNDS", payload: data.url });
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    []
+  );
 
   // Load presentation
   useEffect(() => {
@@ -270,6 +299,20 @@ export default function EditPage() {
           {state.isDirty && (
             <span className="text-xs text-yellow-500">Unsaved changes</span>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleBackgroundFile}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="px-4 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded font-medium disabled:opacity-40 transition-colors"
+          >
+            {isUploading ? "Uploading…" : "Upload background for all slides"}
+          </button>
           <button
             onClick={() => {
               const url = prompt("Image URL to apply to all slides:", DEFAULT_SLIDE_BACKGROUND);
@@ -277,7 +320,7 @@ export default function EditPage() {
             }}
             className="px-4 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition-colors"
           >
-            Set background for all slides
+            Set background URL for all slides
           </button>
           <button
             onClick={handleSave}
