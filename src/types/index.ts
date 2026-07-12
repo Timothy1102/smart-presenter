@@ -4,6 +4,7 @@ export interface Slide {
   text: string;
   background: string;
   image: string | null;
+  audio: string | null;
   section: string | null;
   sectionGroup: number | null;
   presentationId: string;
@@ -31,6 +32,7 @@ export interface SlideInput {
   text: string;
   background: string;
   image?: string | null;
+  audio?: string | null;
   order: number;
   section?: string | null;
   sectionGroup?: number | null;

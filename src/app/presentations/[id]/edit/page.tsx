@@ -293,6 +293,7 @@ export default function EditPage() {
           text: s.text,
           background: s.background,
           image: s.image ?? null,
+          audio: s.audio ?? null,
           order: i,
           section: s.section ?? null,
           sectionGroup: s.sectionGroup ?? null,

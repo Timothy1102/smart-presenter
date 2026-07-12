@@ -42,6 +42,7 @@ model Slide {
   text           String
   background     String       @default("dark-default")
   image          String?
+  audio          String?
   section        String?
   sectionGroup   Int?
   presentationId String

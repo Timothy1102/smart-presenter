@@ -1,5 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Storage for uploaded background images, with two interchangeable backends:
+// Storage for uploaded slide files (background/slide images, slide audio),
+// with two interchangeable backends:
 //
 //   • Supabase Storage — used when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are
 //     set (the right choice for production / serverless hosts).
@@ -7,9 +8,9 @@
 //     and are served statically at `/uploads/<name>`.
 //
 // Either way the value stored in the DB is a URL string, which
-// `resolveBackground()` renders like any other image URL. This module is the
-// only place that knows where files actually live — the API routes and editor
-// are backend-agnostic.
+// `resolveBackground()` renders like any other image URL (or, for audio, is
+// used directly as an <audio> src). This module is the only place that knows
+// where files actually live — the API routes and editor are backend-agnostic.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { randomUUID } from "crypto";
@@ -20,7 +21,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // ─── Shared config ───────────────────────────────────────────────────────────
 
 // Allowed image content types → file extension.
-const ALLOWED_TYPES: Record<string, string> = {
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
@@ -28,23 +29,31 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/avif": "avif",
 };
 
+// Allowed audio content types → file extension.
+const ALLOWED_AUDIO_TYPES: Record<string, string> = {
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+};
+
 export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MB
+export const MAX_AUDIO_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
 
 export class UploadError extends Error {}
 
-// Validate type/size and return the file extension to use.
-function validate(file: File): string {
-  const ext = ALLOWED_TYPES[file.type];
+// Validate type/size against an allowed-types map and return the file extension to use.
+function validate(
+  file: File,
+  allowedTypes: Record<string, string>,
+  maxBytes: number,
+  typeLabel: string
+): string {
+  const ext = allowedTypes[file.type];
   if (!ext) {
-    throw new UploadError(
-      `Unsupported file type: ${file.type || "unknown"}. Use JPEG, PNG, WebP, GIF, or AVIF.`
-    );
+    throw new UploadError(`Unsupported file type: ${file.type || "unknown"}. Use ${typeLabel}.`);
   }
   if (file.size === 0) throw new UploadError("File is empty.");
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new UploadError(
-      `File too large (max ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)} MB).`
-    );
+  if (file.size > maxBytes) {
+    throw new UploadError(`File too large (max ${Math.floor(maxBytes / 1024 / 1024)} MB).`);
   }
   return ext;
 }
@@ -120,10 +129,10 @@ async function deleteSupabase(value: string): Promise<void> {
 
 // ─── Public API (backend-agnostic) ───────────────────────────────────────────
 
-// Returns true if a stored background value points at a file we manage.
-// Recognizes both backends so data created under one still cleans up under it,
-// regardless of which backend is currently active.
-export function isUploadedImage(value: string): boolean {
+// Returns true if a stored value (background, image, or audio) points at a
+// file we manage. Recognizes both backends so data created under one still
+// cleans up under it, regardless of which backend is currently active.
+export function isManagedUpload(value: string): boolean {
   if (value.startsWith(UPLOADS_URL_PREFIX)) return true;
   if (SUPABASE_URL && value.startsWith(supabasePublicPrefix())) return true;
   return false;
@@ -131,15 +140,22 @@ export function isUploadedImage(value: string): boolean {
 
 // Persist an uploaded image and return its URL.
 export async function saveUploadedImage(file: File): Promise<string> {
-  const ext = validate(file);
+  const ext = validate(file, ALLOWED_IMAGE_TYPES, MAX_UPLOAD_BYTES, "JPEG, PNG, WebP, GIF, or AVIF");
   const filename = `${randomUUID()}.${ext}`;
   return useSupabase ? saveSupabase(file, filename) : saveLocal(file, filename);
 }
 
-// Delete an uploaded image given its URL. Routes by the URL's form (not the
+// Persist an uploaded audio file and return its URL.
+export async function saveUploadedAudio(file: File): Promise<string> {
+  const ext = validate(file, ALLOWED_AUDIO_TYPES, MAX_AUDIO_UPLOAD_BYTES, "MP3");
+  const filename = `${randomUUID()}.${ext}`;
+  return useSupabase ? saveSupabase(file, filename) : saveLocal(file, filename);
+}
+
+// Delete an uploaded file given its URL. Routes by the URL's form (not the
 // active backend) so each file is removed from where it actually lives. No-op
 // for preset keys, external URLs, or files already gone.
-export async function deleteUploadedImage(value: string): Promise<void> {
+export async function deleteManagedUpload(value: string): Promise<void> {
   if (value.startsWith(UPLOADS_URL_PREFIX)) {
     await deleteLocal(value);
   } else if (SUPABASE_URL && value.startsWith(supabasePublicPrefix())) {

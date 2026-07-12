@@ -15,6 +15,7 @@ export function PresentationView({ slides, title, presentationId }: Presentation
   const [current, setCurrent] = useState(0);
   const [started, setStarted] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Open BroadcastChannel
   useEffect(() => {
@@ -74,12 +75,43 @@ export function PresentationView({ slides, title, presentationId }: Presentation
     return () => window.removeEventListener("keydown", onKey);
   }, [started, goNext, goPrev]);
 
+  // Play the current slide's background audio (if any), stop it otherwise.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const url = slides[current]?.audio;
+    if (started && url) {
+      audio.src = url;
+      audio.currentTime = 0;
+      audio.play().catch(() => {
+        // Autoplay blocked (e.g. browser didn't recognize the earlier "Click to
+        // start" as a qualifying gesture) — silently skip rather than throwing.
+      });
+    } else {
+      audio.pause();
+      audio.removeAttribute("src");
+    }
+  }, [current, started, slides]);
+
   function handleStart() {
     // Fullscreen must be triggered by a direct user gesture — this click qualifies
     const el = document.documentElement;
     if (el.requestFullscreen) {
       el.requestFullscreen().catch(() => {
         // Fullscreen unavailable (e.g. iOS) — continue without it
+      });
+    }
+    // Prime audio playback within this same gesture — some browsers (Safari)
+    // only allow later programmatic play() calls if audio played once during
+    // a direct user interaction.
+    const audio = audioRef.current;
+    if (audio) {
+      audio.muted = true;
+      audio.play().then(() => {
+        audio.pause();
+        audio.muted = false;
+      }).catch(() => {
+        audio.muted = false;
       });
     }
     setStarted(true);
@@ -94,6 +126,12 @@ export function PresentationView({ slides, title, presentationId }: Presentation
     );
   }
 
+  // The <audio> element is rendered once here (rather than inside each branch
+  // below) so it's the same DOM node across the splash → presenting
+  // transition — some browsers (Safari) only honor the "unlocked by user
+  // gesture" state for the specific element that played during the gesture.
+  const audioEl = <audio ref={audioRef} className="hidden" />;
+
   // Splash screen — forces a user gesture before requesting fullscreen
   if (!started) {
     return (
@@ -101,6 +139,7 @@ export function PresentationView({ slides, title, presentationId }: Presentation
         className="w-full h-dvh bg-black flex flex-col items-center justify-center gap-6 cursor-pointer select-none"
         onClick={handleStart}
       >
+        {audioEl}
         <div className="text-center">
           <p className="text-white/40 text-sm uppercase tracking-widest mb-3">Now presenting</p>
           <h1 className="text-white text-4xl font-bold mb-2">{title}</h1>
@@ -126,6 +165,7 @@ export function PresentationView({ slides, title, presentationId }: Presentation
       className="w-full h-dvh select-none cursor-pointer"
       onClick={goNext}
     >
+      {audioEl}
       <SlideDisplay
         slide={slide}
         slideNumber={current + 1}

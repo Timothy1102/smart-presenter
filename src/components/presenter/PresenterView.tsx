@@ -317,7 +317,14 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
 
             {/* Current slide — large */}
             <div className="flex flex-col flex-1 min-w-0 gap-2">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Current</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Current</p>
+                {currentSlide.audio && (
+                  <span className="text-xs" title="Has background audio" aria-label="Has background audio">
+                    🔊
+                  </span>
+                )}
+              </div>
               <div className="flex-1 rounded-xl overflow-hidden border-2 border-blue-500 shadow-lg shadow-blue-900/30">
                 <div className="w-full h-full" style={{ aspectRatio: "16/9", minHeight: 0 }}>
                   <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
@@ -364,6 +371,17 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
                     currentSlide.text || <span className="text-gray-600 italic">Empty slide</span>
                   )}
                 </p>
+                {currentSlide.audio && (
+                  <div className="mt-3 pt-3 border-t border-gray-700">
+                    <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <span aria-hidden="true">🔊</span> Background audio
+                    </p>
+                    <audio controls src={currentSlide.audio} className="w-full h-8" />
+                    <p className="text-[10px] text-gray-600 mt-1">
+                      Preview only — plays automatically on the audience view, not here.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -416,7 +434,7 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
                 )}
                 <button
                   onClick={() => goTo(i)}
-                  className={`w-full rounded overflow-hidden border-2 transition-all ${
+                  className={`relative w-full rounded overflow-hidden border-2 transition-all ${
                     i === current
                       ? "border-blue-500 shadow-md shadow-blue-900/40"
                       : "border-transparent opacity-60 hover:opacity-100 hover:border-gray-600"
@@ -433,6 +451,15 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
                       </span>
                     )}
                   </div>
+                  {slide.audio && (
+                    <span
+                      className="absolute bottom-0.5 right-0.5 text-[9px] drop-shadow"
+                      title="Has background audio"
+                      aria-label="Has background audio"
+                    >
+                      🔊
+                    </span>
+                  )}
                 </button>
                 <span className={`text-[9px] ${i === current ? "text-gray-300" : "text-gray-600"}`}>
                   {i + 1}

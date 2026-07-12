@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { SlideInput } from "@/types";
-import { deleteUploadedImage, isUploadedImage } from "@/lib/storage";
+import { deleteManagedUpload, isManagedUpload } from "@/lib/storage";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -35,18 +35,18 @@ export async function PUT(request: Request, { params }: Params) {
     const body = await request.json();
     const { title, slides, isPinned }: { title?: string; slides?: SlideInput[]; isPinned?: boolean } = body;
 
-    // Capture uploaded files (backgrounds + slide images) in use before the
-    // save, so we can clean up any that are no longer referenced afterward.
+    // Capture uploaded files (backgrounds + slide images + slide audio) in use
+    // before the save, so we can clean up any that are no longer referenced afterward.
     let oldUploaded = new Set<string>();
     if (slides !== undefined) {
       const before = await prisma.slide.findMany({
         where: { presentationId: id },
-        select: { background: true, image: true },
+        select: { background: true, image: true, audio: true },
       });
       oldUploaded = new Set(
         before
-          .flatMap((s) => [s.background, s.image])
-          .filter((v): v is string => !!v && isUploadedImage(v))
+          .flatMap((s) => [s.background, s.image, s.audio])
+          .filter((v): v is string => !!v && isManagedUpload(v))
       );
     }
 
@@ -85,6 +85,7 @@ export async function PUT(request: Request, { params }: Params) {
             text: slide.text,
             background: slide.background,
             image: slide.image ?? null,
+            audio: slide.audio ?? null,
             order: i,
             presentationId: id,
             section: slide.section ?? null,
@@ -111,14 +112,16 @@ export async function PUT(request: Request, { params }: Params) {
     // referenced by any slide (in this or any other presentation).
     if (slides !== undefined) {
       const newUploaded = new Set(
-        slides.flatMap((s) => [s.background, s.image]).filter((v): v is string => !!v && isUploadedImage(v))
+        slides
+          .flatMap((s) => [s.background, s.image, s.audio])
+          .filter((v): v is string => !!v && isManagedUpload(v))
       );
       const removed = [...oldUploaded].filter((url) => !newUploaded.has(url));
       for (const url of removed) {
         const stillUsed = await prisma.slide.count({
-          where: { OR: [{ background: url }, { image: url }] },
+          where: { OR: [{ background: url }, { image: url }, { audio: url }] },
         });
-        if (stillUsed === 0) await deleteUploadedImage(url);
+        if (stillUsed === 0) await deleteManagedUpload(url);
       }
     }
 
@@ -135,16 +138,16 @@ export async function PUT(request: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   const { id } = await params;
   try {
-    // Collect uploaded files (backgrounds + slide images) used by this
-    // presentation's slides before the rows are cascade-deleted.
+    // Collect uploaded files (backgrounds + slide images + slide audio) used by
+    // this presentation's slides before the rows are cascade-deleted.
     const slides = await prisma.slide.findMany({
       where: { presentationId: id },
-      select: { background: true, image: true },
+      select: { background: true, image: true, audio: true },
     });
     const uploadedFiles = new Set(
       slides
-        .flatMap((s) => [s.background, s.image])
-        .filter((v): v is string => !!v && isUploadedImage(v))
+        .flatMap((s) => [s.background, s.image, s.audio])
+        .filter((v): v is string => !!v && isManagedUpload(v))
     );
 
     await prisma.presentation.delete({ where: { id } });
@@ -152,10 +155,10 @@ export async function DELETE(_req: Request, { params }: Params) {
     // Delete each file only if no slide in any OTHER presentation still uses it.
     for (const url of uploadedFiles) {
       const stillUsed = await prisma.slide.count({
-        where: { OR: [{ background: url }, { image: url }] },
+        where: { OR: [{ background: url }, { image: url }, { audio: url }] },
       });
       if (stillUsed === 0) {
-        await deleteUploadedImage(url);
+        await deleteManagedUpload(url);
       }
     }
 

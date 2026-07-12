@@ -44,6 +44,7 @@ The core use case is worship/church settings: a song leader or operator creates 
 - **Slide text editor** — edit the text of any selected slide in a textarea. A live preview shows exactly how the slide will look when presented.
 - **Background picker** — choose from 6 preset dark gradient backgrounds, or paste any image URL for a custom background.
 - **Background upload** — upload an image file and apply it as the background for all slides in the presentation. Stored in Supabase Storage (production) or the local filesystem (dev). See [Background Image Uploads](#background-image-uploads).
+- **Background audio** — attach an MP3 file to any slide. It plays automatically (once) when that slide is shown in the audience view, and stops when the presenter moves to another slide. See [Slide Background Audio](#slide-background-audio).
 - **Add blank slide** — insert an empty slide anywhere (via drag-after-add).
 - **Unsaved changes indicator** — the toolbar shows "Unsaved changes" when there are pending edits, and warns before navigating away.
 - **Save** — one button saves the title and all slides to the database in a single request.
@@ -120,6 +121,10 @@ model Slide {
   order          Int
   text           String
   background     String       @default("dark-default")
+  image          String?
+  audio          String?
+  section        String?
+  sectionGroup   Int?
   presentationId String
   presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
 
@@ -130,6 +135,8 @@ model Slide {
 ### Notes
 
 - **`Slide.background`** stores either a preset key (e.g. `"dark-blue"`) or a raw image URL. The `resolveBackground()` function in `src/lib/slide-config.ts` converts a key to its CSS gradient at render time.
+- **`Slide.image`** — an optional uploaded/URL image shown instead of `text` for that slide.
+- **`Slide.audio`** — an optional uploaded MP3 URL. Played automatically by the audience view when the slide becomes current; stopped when navigating away. `null` when the slide has no audio.
 - **`Slide.order`** is always rewritten as sequential integers (0, 1, 2…) on every save. The database never stores gaps.
 - **`onDelete: Cascade`** — deleting a `Presentation` automatically deletes all its `Slide` rows.
 - **No User model** — there is no authentication. All data is shared under one implicit user.
@@ -267,6 +274,19 @@ Uploads a background image file. Accepts a `multipart/form-data` body with a sin
 ```
 
 **Errors**: `400` if the file is missing, empty, too large, or an unsupported type; `500` on storage failure.
+
+---
+
+### `POST /api/upload/audio`
+
+Uploads an MP3 file to attach to a slide as background audio. Accepts a `multipart/form-data` body with a single `file` field. Validates the type (MP3 only) and size (max 20 MB), stores it via the same storage backend as background images, and returns its public URL — which can then be saved as a slide's `audio`.
+
+**Response** `201 Created`
+```json
+{ "url": "https://<ref>.supabase.co/storage/v1/object/public/backgrounds/<id>.mp3" }
+```
+
+**Errors**: `400` if the file is missing, empty, too large, or not an MP3; `500` on storage failure.
 
 ---
 
@@ -459,6 +479,16 @@ Slides can use an uploaded image as their background, applied to all slides in a
    Both values are under **Project Settings → API**. The `service_role` key bypasses Row Level Security, so it must stay server-side only — never expose it in a `NEXT_PUBLIC_*` variable. Uploads run server-side through `/api/upload`, so the key is never sent to the browser.
 
 No schema migration or `next.config` image-domain changes are needed — backgrounds render as CSS `url(...)`, not `next/image`.
+
+### Slide Background Audio
+
+Any slide can have an MP3 attached via the **"Attach MP3"** control in the per-slide editor panel (`src/components/editor/SlideEditor.tsx`). Uploads go through `POST /api/upload/audio`, which validates the file (MP3 only, max 20 MB) and stores it through the same `src/lib/storage.ts` backend (Supabase Storage or local filesystem) as background images. The resulting URL is saved in `Slide.audio`.
+
+**Playback.** The audience view (`PresentationView.tsx`) owns a single `<audio>` element and plays the current slide's `audio` URL from the start whenever `current` changes, pausing and clearing it when the new slide has none. Audio does not loop — it plays once per slide visit. The presenter control view never plays audio itself (it renders `SlideDisplay` twice — current and next preview — so embedding playback there would double-fire); it only shows the slide list and controls navigation.
+
+**Autoplay unlocking.** Browsers require a user gesture before allowing audio playback. The same "Click to start (fullscreen)" splash screen click that unlocks fullscreen is reused to prime the `<audio>` element (a muted play/pause) so subsequent slide-change autoplay is allowed without further clicks.
+
+**Cleanup.** Same model as background images — an uploaded MP3 is deleted automatically once no slide (in any presentation) still references it, checked on Save and on presentation delete.
 
 ---
 

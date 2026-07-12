@@ -16,6 +16,8 @@ interface SlideEditorProps {
 export function SlideEditor({ slide, onUpdate, onSectionChange, sectionOptions }: SlideEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
 
   const handleImageFile = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,6 +38,29 @@ export function SlideEditor({ slide, onUpdate, onSectionChange, sectionOptions }
         alert(err instanceof Error ? err.message : "Upload failed");
       } finally {
         setIsUploading(false);
+      }
+    },
+    [slide, onUpdate]
+  );
+
+  const handleAudioFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // allow re-selecting the same file later
+      if (!file) return;
+
+      setIsUploadingAudio(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/upload/audio", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
+        onUpdate({ ...slide, audio: data.url });
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setIsUploadingAudio(false);
       }
     },
     [slide, onUpdate]
@@ -160,6 +185,45 @@ export function SlideEditor({ slide, onUpdate, onSectionChange, sectionOptions }
             <option key={opt} value={opt} />
           ))}
         </datalist>
+      </div>
+
+      {/* Audio */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+          Background audio
+        </label>
+        <input
+          ref={audioInputRef}
+          type="file"
+          accept="audio/mpeg,audio/mp3,.mp3"
+          onChange={handleAudioFile}
+          className="hidden"
+        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => audioInputRef.current?.click()}
+            disabled={isUploadingAudio}
+            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium disabled:opacity-40 transition-colors"
+          >
+            {isUploadingAudio ? "Uploading…" : slide.audio ? "Replace audio" : "Attach MP3"}
+          </button>
+          {slide.audio && (
+            <button
+              onClick={() => onUpdate({ ...slide, audio: null })}
+              className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-colors"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        {slide.audio && (
+          <>
+            <audio controls src={slide.audio} className="w-full mt-1 h-9" />
+            <p className="text-xs text-gray-500 mt-1">
+              Plays automatically when this slide is shown in the audience view.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Background picker */}

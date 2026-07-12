@@ -88,6 +88,11 @@ export function SlideItem({ slide, index, isSelected, onSelect, onDelete }: Slid
               {slide.section}
             </span>
           )}
+          {slide.audio && (
+            <span className="text-[10px] text-gray-400" title="Has background audio" aria-label="Has background audio">
+              🔊
+            </span>
+          )}
         </div>
         <p className="text-sm text-gray-300 truncate leading-snug">
           {slide.image ? (
