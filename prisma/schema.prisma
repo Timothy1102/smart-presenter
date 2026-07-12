@@ -41,6 +41,7 @@ model Slide {
   order          Int
   text           String
   background     String       @default("dark-default")
+  image          String?
   section        String?
   sectionGroup   Int?
   presentationId String

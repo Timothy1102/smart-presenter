@@ -35,15 +35,19 @@ export async function PUT(request: Request, { params }: Params) {
     const body = await request.json();
     const { title, slides, isPinned }: { title?: string; slides?: SlideInput[]; isPinned?: boolean } = body;
 
-    // Capture uploaded background files in use before the save, so we can clean
-    // up any that are no longer referenced afterward.
+    // Capture uploaded files (backgrounds + slide images) in use before the
+    // save, so we can clean up any that are no longer referenced afterward.
     let oldUploaded = new Set<string>();
     if (slides !== undefined) {
       const before = await prisma.slide.findMany({
         where: { presentationId: id },
-        select: { background: true },
+        select: { background: true, image: true },
       });
-      oldUploaded = new Set(before.map((s) => s.background).filter(isUploadedImage));
+      oldUploaded = new Set(
+        before
+          .flatMap((s) => [s.background, s.image])
+          .filter((v): v is string => !!v && isUploadedImage(v))
+      );
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -80,6 +84,7 @@ export async function PUT(request: Request, { params }: Params) {
           const data = {
             text: slide.text,
             background: slide.background,
+            image: slide.image ?? null,
             order: i,
             presentationId: id,
             section: slide.section ?? null,
@@ -106,12 +111,14 @@ export async function PUT(request: Request, { params }: Params) {
     // referenced by any slide (in this or any other presentation).
     if (slides !== undefined) {
       const newUploaded = new Set(
-        slides.map((s) => s.background).filter(isUploadedImage)
+        slides.flatMap((s) => [s.background, s.image]).filter((v): v is string => !!v && isUploadedImage(v))
       );
-      const removed = [...oldUploaded].filter((bg) => !newUploaded.has(bg));
-      for (const background of removed) {
-        const stillUsed = await prisma.slide.count({ where: { background } });
-        if (stillUsed === 0) await deleteUploadedImage(background);
+      const removed = [...oldUploaded].filter((url) => !newUploaded.has(url));
+      for (const url of removed) {
+        const stillUsed = await prisma.slide.count({
+          where: { OR: [{ background: url }, { image: url }] },
+        });
+        if (stillUsed === 0) await deleteUploadedImage(url);
       }
     }
 
@@ -128,23 +135,27 @@ export async function PUT(request: Request, { params }: Params) {
 export async function DELETE(_req: Request, { params }: Params) {
   const { id } = await params;
   try {
-    // Collect uploaded background files used by this presentation's slides
-    // before the rows are cascade-deleted.
+    // Collect uploaded files (backgrounds + slide images) used by this
+    // presentation's slides before the rows are cascade-deleted.
     const slides = await prisma.slide.findMany({
       where: { presentationId: id },
-      select: { background: true },
+      select: { background: true, image: true },
     });
-    const uploadedBackgrounds = new Set(
-      slides.map((s) => s.background).filter(isUploadedImage)
+    const uploadedFiles = new Set(
+      slides
+        .flatMap((s) => [s.background, s.image])
+        .filter((v): v is string => !!v && isUploadedImage(v))
     );
 
     await prisma.presentation.delete({ where: { id } });
 
     // Delete each file only if no slide in any OTHER presentation still uses it.
-    for (const background of uploadedBackgrounds) {
-      const stillUsed = await prisma.slide.count({ where: { background } });
+    for (const url of uploadedFiles) {
+      const stillUsed = await prisma.slide.count({
+        where: { OR: [{ background: url }, { image: url }] },
+      });
       if (stillUsed === 0) {
-        await deleteUploadedImage(background);
+        await deleteUploadedImage(url);
       }
     }
 

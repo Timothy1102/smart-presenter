@@ -3,6 +3,7 @@ export interface Slide {
   order: number;
   text: string;
   background: string;
+  image: string | null;
   section: string | null;
   sectionGroup: number | null;
   presentationId: string;
@@ -29,6 +30,7 @@ export interface SlideInput {
   id?: string; // undefined = new slide (will be inserted)
   text: string;
   background: string;
+  image?: string | null;
   order: number;
   section?: string | null;
   sectionGroup?: number | null;

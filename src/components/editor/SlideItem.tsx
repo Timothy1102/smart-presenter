@@ -64,9 +64,18 @@ export function SlideItem({ slide, index, isSelected, onSelect, onDelete }: Slid
         style={{ background: resolveBackground(slide.background) }}
       >
         <div className="w-full h-full flex items-center justify-center p-1">
-          <span className="text-white text-[6px] leading-tight text-center line-clamp-3 font-medium">
-            {slide.text || "…"}
-          </span>
+          {slide.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={slide.image}
+              alt=""
+              className="max-w-full max-h-full object-contain"
+            />
+          ) : (
+            <span className="text-white text-[6px] leading-tight text-center line-clamp-3 font-medium">
+              {slide.text || "…"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -81,7 +90,11 @@ export function SlideItem({ slide, index, isSelected, onSelect, onDelete }: Slid
           )}
         </div>
         <p className="text-sm text-gray-300 truncate leading-snug">
-          {slide.text.split("\n")[0] || <span className="text-gray-600 italic">Empty</span>}
+          {slide.image ? (
+            <span className="text-gray-500 italic">Image</span>
+          ) : (
+            slide.text.split("\n")[0] || <span className="text-gray-600 italic">Empty</span>
+          )}
         </p>
       </div>
 

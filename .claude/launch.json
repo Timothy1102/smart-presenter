@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "smart-presenter-dev",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": [
+        "-lc",
+        "PATH=/Users/timthang/.nvm/versions/node/v20.19.5/bin:$PATH exec npm run dev"
+      ],
+      "port": 3000
+    }
+  ]
+}

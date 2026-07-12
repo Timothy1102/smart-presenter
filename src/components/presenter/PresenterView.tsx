@@ -358,7 +358,11 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
               <div className="flex-1 rounded-lg bg-gray-800 border border-gray-700 p-3 overflow-y-auto">
                 <p className="text-xs text-gray-500 mb-1">Slide {current + 1} text</p>
                 <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
-                  {currentSlide.text || <span className="text-gray-600 italic">Empty slide</span>}
+                  {currentSlide.image ? (
+                    <span className="text-gray-500 italic">Image slide</span>
+                  ) : (
+                    currentSlide.text || <span className="text-gray-600 italic">Empty slide</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -420,9 +424,14 @@ export function PresenterView({ slides, title, presentationId, setlistSongs, son
                   style={{ aspectRatio: "16/9", background: resolveBackground(slide.background) }}
                 >
                   <div className="w-full h-full flex items-center justify-center p-1">
-                    <span className="text-white text-[7px] leading-tight text-center line-clamp-3 font-medium drop-shadow">
-                      {slide.text || "…"}
-                    </span>
+                    {slide.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={slide.image} alt="" className="max-w-full max-h-full object-contain" />
+                    ) : (
+                      <span className="text-white text-[7px] leading-tight text-center line-clamp-3 font-medium drop-shadow">
+                        {slide.text || "…"}
+                      </span>
+                    )}
                   </div>
                 </button>
                 <span className={`text-[9px] ${i === current ? "text-gray-300" : "text-gray-600"}`}>

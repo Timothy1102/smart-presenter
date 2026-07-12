@@ -292,6 +292,7 @@ export default function EditPage() {
           id: s.id.includes("-") ? undefined : s.id,
           text: s.text,
           background: s.background,
+          image: s.image ?? null,
           order: i,
           section: s.section ?? null,
           sectionGroup: s.sectionGroup ?? null,
