@@ -22,6 +22,7 @@ interface EditorState {
   isSaving: boolean;
   isLoading: boolean;
   error: string | null;
+  saveError: string | null;
 }
 
 type EditorAction =
@@ -38,7 +39,8 @@ type EditorAction =
   | { type: "SET_ALL_BACKGROUNDS"; payload: string }
   | { type: "DUPLICATE_SLIDES" }
   | { type: "SAVE_START" }
-  | { type: "SAVE_SUCCESS"; payload: SlideWithId[] };
+  | { type: "SAVE_SUCCESS"; payload: SlideWithId[] }
+  | { type: "SAVE_ERROR"; payload: string };
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
@@ -200,9 +202,18 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       };
     }
     case "SAVE_START":
-      return { ...state, isSaving: true };
+      return { ...state, isSaving: true, saveError: null };
     case "SAVE_SUCCESS":
-      return { ...state, isSaving: false, isDirty: false, slides: action.payload };
+      return {
+        ...state,
+        isSaving: false,
+        isDirty: false,
+        saveError: null,
+        slides: action.payload,
+      };
+    case "SAVE_ERROR":
+      // Keep the edits and the dirty flag so the save can be retried.
+      return { ...state, isSaving: false, saveError: action.payload };
     default:
       return state;
   }
@@ -216,6 +227,7 @@ const initialState: EditorState = {
   isSaving: false,
   isLoading: true,
   error: null,
+  saveError: null,
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -282,26 +294,36 @@ export default function EditPage() {
 
   const handleSave = useCallback(async () => {
     dispatch({ type: "SAVE_START" });
-    const res = await fetch(`/api/presentations/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: state.title,
-        slides: state.slides.map((s, i) => ({
-          // UUIDs from crypto.randomUUID() contain hyphens; CUIDs from Prisma do not
-          id: s.id.includes("-") ? undefined : s.id,
-          text: s.text,
-          background: s.background,
-          image: s.image ?? null,
-          audio: s.audio ?? null,
-          order: i,
-          section: s.section ?? null,
-          sectionGroup: s.sectionGroup ?? null,
-        })),
-      }),
-    });
-    const data = await res.json();
-    dispatch({ type: "SAVE_SUCCESS", payload: data.slides });
+    try {
+      const res = await fetch(`/api/presentations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: state.title,
+          slides: state.slides.map((s, i) => ({
+            // UUIDs from crypto.randomUUID() contain hyphens; CUIDs from Prisma do not
+            id: s.id.includes("-") ? undefined : s.id,
+            text: s.text,
+            background: s.background,
+            image: s.image ?? null,
+            audio: s.audio ?? null,
+            order: i,
+            section: s.section ?? null,
+            sectionGroup: s.sectionGroup ?? null,
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.slides) {
+        throw new Error(data?.error || `Save failed (HTTP ${res.status})`);
+      }
+      dispatch({ type: "SAVE_SUCCESS", payload: data.slides });
+    } catch (err) {
+      dispatch({
+        type: "SAVE_ERROR",
+        payload: err instanceof Error ? err.message : "Save failed",
+      });
+    }
   }, [id, state.title, state.slides]);
 
   const selectedSlide =
@@ -357,8 +379,12 @@ export default function EditPage() {
           className="flex-1 max-w-xs px-3 py-1.5 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
         />
         <div className="ml-auto flex items-center gap-3">
-          {state.isDirty && (
-            <span className="text-xs text-yellow-500">Unsaved changes</span>
+          {state.saveError ? (
+            <span className="text-xs text-red-400">{state.saveError}</span>
+          ) : (
+            state.isDirty && (
+              <span className="text-xs text-yellow-500">Unsaved changes</span>
+            )
           )}
           <input
             ref={fileInputRef}

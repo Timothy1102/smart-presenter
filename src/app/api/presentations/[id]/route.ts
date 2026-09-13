@@ -5,6 +5,40 @@ import { deleteManagedUpload, isManagedUpload } from "@/lib/storage";
 
 type Params = { params: Promise<{ id: string }> };
 
+type UploadFields = {
+  background?: string | null;
+  image?: string | null;
+  audio?: string | null;
+};
+
+/** The uploaded-file URLs referenced by a set of slides. */
+function uploadedUrls(slides: UploadFields[]): Set<string> {
+  return new Set(
+    slides
+      .flatMap((s) => [s.background, s.image, s.audio])
+      .filter((v): v is string => !!v && isManagedUpload(v))
+  );
+}
+
+/** Delete each URL that no slide in any presentation references any more. */
+async function deleteUnreferencedUploads(urls: string[]) {
+  if (urls.length === 0) return;
+  const referencing = await prisma.slide.findMany({
+    where: {
+      OR: [
+        { background: { in: urls } },
+        { image: { in: urls } },
+        { audio: { in: urls } },
+      ],
+    },
+    select: { background: true, image: true, audio: true },
+  });
+  const stillUsed = uploadedUrls(referencing);
+  await Promise.all(
+    urls.filter((url) => !stillUsed.has(url)).map(deleteManagedUpload)
+  );
+}
+
 // GET /api/presentations/[id] — get one with all slides
 export async function GET(_req: Request, { params }: Params) {
   const { id } = await params;
@@ -20,7 +54,8 @@ export async function GET(_req: Request, { params }: Params) {
       );
     }
     return NextResponse.json(presentation);
-  } catch {
+  } catch (err) {
+    console.error(`GET /api/presentations/${id} failed:`, err);
     return NextResponse.json(
       { error: "Failed to fetch presentation" },
       { status: 500 }
@@ -43,90 +78,80 @@ export async function PUT(request: Request, { params }: Params) {
         where: { presentationId: id },
         select: { background: true, image: true, audio: true },
       });
-      oldUploaded = new Set(
-        before
-          .flatMap((s) => [s.background, s.image, s.audio])
-          .filter((v): v is string => !!v && isManagedUpload(v))
-      );
+      oldUploaded = uploadedUrls(before);
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      // Update title and/or isPinned if provided
-      if (title !== undefined || isPinned !== undefined) {
-        await tx.presentation.update({
-          where: { id },
-          data: {
-            ...(title !== undefined && { title: title.trim() }),
-            ...(isPinned !== undefined && { isPinned }),
-          },
-        });
-      }
-
-      if (slides !== undefined) {
-        // Get existing slide ids
-        const existing = await tx.slide.findMany({
-          where: { presentationId: id },
-          select: { id: true },
-        });
-        const existingIds = new Set(existing.map((s) => s.id));
-
-        // Determine which slides to delete (in DB but not in new array)
-        const incomingIds = new Set(slides.filter((s) => s.id).map((s) => s.id!));
-        const toDelete = [...existingIds].filter((sid) => !incomingIds.has(sid));
-
-        if (toDelete.length > 0) {
-          await tx.slide.deleteMany({ where: { id: { in: toDelete } } });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // Update title and/or isPinned if provided
+        if (title !== undefined || isPinned !== undefined) {
+          await tx.presentation.update({
+            where: { id },
+            data: {
+              ...(title !== undefined && { title: title.trim() }),
+              ...(isPinned !== undefined && { isPinned }),
+            },
+          });
         }
 
-        // Upsert slides in order
-        for (let i = 0; i < slides.length; i++) {
-          const slide = slides[i];
-          const data = {
-            text: slide.text,
-            background: slide.background,
-            image: slide.image ?? null,
-            audio: slide.audio ?? null,
-            order: i,
-            presentationId: id,
-            section: slide.section ?? null,
-            sectionGroup: slide.sectionGroup ?? null,
-          };
+        if (slides !== undefined) {
+          // A save rewrites the whole slide set, so it runs as one deleteMany
+          // plus one createMany. The round trips a transaction needs must not
+          // scale with slide count: a per-slide update/create loop takes a full
+          // round trip per slide, which runs past the transaction timeout on a
+          // deck of any size once the database is far from the server.
+          const existing = await tx.slide.findMany({
+            where: { presentationId: id },
+            select: { id: true },
+          });
+          const reusableIds = new Set(existing.map((s) => s.id));
 
-          if (slide.id && existingIds.has(slide.id)) {
-            // Update existing slide
-            await tx.slide.update({ where: { id: slide.id }, data });
-          } else {
-            // Insert new slide
-            await tx.slide.create({ data });
+          await tx.slide.deleteMany({ where: { presentationId: id } });
+
+          if (slides.length > 0) {
+            await tx.slide.createMany({
+              data: slides.map((slide, i) => {
+                // Re-insert a slide that already existed under its own id so ids
+                // stay stable across a save. `delete` reports whether the id was
+                // one of this presentation's and claims it, so an unknown or
+                // repeated id falls through to a database-generated one.
+                const keepId = !!slide.id && reusableIds.delete(slide.id);
+                return {
+                  ...(keepId && { id: slide.id }),
+                  text: slide.text,
+                  background: slide.background,
+                  image: slide.image ?? null,
+                  audio: slide.audio ?? null,
+                  order: i,
+                  presentationId: id,
+                  section: slide.section ?? null,
+                  sectionGroup: slide.sectionGroup ?? null,
+                };
+              }),
+            });
           }
         }
-      }
 
-      return tx.presentation.findUnique({
-        where: { id },
-        include: { slides: { orderBy: { order: "asc" } } },
-      });
-    });
+        return tx.presentation.findUnique({
+          where: { id },
+          include: { slides: { orderBy: { order: "asc" } } },
+        });
+      },
+      { timeout: 20_000, maxWait: 10_000 }
+    );
 
     // Delete uploaded files that were dropped by this save and are no longer
     // referenced by any slide (in this or any other presentation).
     if (slides !== undefined) {
-      const newUploaded = new Set(
-        slides
-          .flatMap((s) => [s.background, s.image, s.audio])
-          .filter((v): v is string => !!v && isManagedUpload(v))
+      const newUploaded = uploadedUrls(slides);
+      await deleteUnreferencedUploads(
+        [...oldUploaded].filter((url) => !newUploaded.has(url))
       );
-      const removed = [...oldUploaded].filter((url) => !newUploaded.has(url));
-      for (const url of removed) {
-        const stillUsed = await prisma.slide.count({
-          where: { OR: [{ background: url }, { image: url }, { audio: url }] },
-        });
-        if (stillUsed === 0) await deleteManagedUpload(url);
-      }
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    console.error(`PUT /api/presentations/${id} failed:`, err);
     return NextResponse.json(
       { error: "Failed to save presentation" },
       { status: 500 }
@@ -144,26 +169,16 @@ export async function DELETE(_req: Request, { params }: Params) {
       where: { presentationId: id },
       select: { background: true, image: true, audio: true },
     });
-    const uploadedFiles = new Set(
-      slides
-        .flatMap((s) => [s.background, s.image, s.audio])
-        .filter((v): v is string => !!v && isManagedUpload(v))
-    );
+    const uploadedFiles = uploadedUrls(slides);
 
     await prisma.presentation.delete({ where: { id } });
 
     // Delete each file only if no slide in any OTHER presentation still uses it.
-    for (const url of uploadedFiles) {
-      const stillUsed = await prisma.slide.count({
-        where: { OR: [{ background: url }, { image: url }, { audio: url }] },
-      });
-      if (stillUsed === 0) {
-        await deleteManagedUpload(url);
-      }
-    }
+    await deleteUnreferencedUploads([...uploadedFiles]);
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error(`DELETE /api/presentations/${id} failed:`, err);
     return NextResponse.json(
       { error: "Failed to delete presentation" },
       { status: 500 }
