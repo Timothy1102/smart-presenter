@@ -81,64 +81,61 @@ export async function PUT(request: Request, { params }: Params) {
       oldUploaded = uploadedUrls(before);
     }
 
-    const result = await prisma.$transaction(
-      async (tx) => {
-        // Update title and/or isPinned if provided
-        if (title !== undefined || isPinned !== undefined) {
-          await tx.presentation.update({
-            where: { id },
-            data: {
-              ...(title !== undefined && { title: title.trim() }),
-              ...(isPinned !== undefined && { isPinned }),
-            },
-          });
-        }
-
-        if (slides !== undefined) {
-          // A save rewrites the whole slide set, so it runs as one deleteMany
-          // plus one createMany. The round trips a transaction needs must not
-          // scale with slide count: a per-slide update/create loop takes a full
-          // round trip per slide, which runs past the transaction timeout on a
-          // deck of any size once the database is far from the server.
-          const existing = await tx.slide.findMany({
-            where: { presentationId: id },
-            select: { id: true },
-          });
-          const reusableIds = new Set(existing.map((s) => s.id));
-
-          await tx.slide.deleteMany({ where: { presentationId: id } });
-
-          if (slides.length > 0) {
-            await tx.slide.createMany({
-              data: slides.map((slide, i) => {
-                // Re-insert a slide that already existed under its own id so ids
-                // stay stable across a save. `delete` reports whether the id was
-                // one of this presentation's and claims it, so an unknown or
-                // repeated id falls through to a database-generated one.
-                const keepId = !!slide.id && reusableIds.delete(slide.id);
-                return {
-                  ...(keepId && { id: slide.id }),
-                  text: slide.text,
-                  background: slide.background,
-                  image: slide.image ?? null,
-                  audio: slide.audio ?? null,
-                  order: i,
-                  presentationId: id,
-                  section: slide.section ?? null,
-                  sectionGroup: slide.sectionGroup ?? null,
-                };
-              }),
-            });
-          }
-        }
-
-        return tx.presentation.findUnique({
+    const result = await prisma.$transaction(async (tx) => {
+      // Update title and/or isPinned if provided
+      if (title !== undefined || isPinned !== undefined) {
+        await tx.presentation.update({
           where: { id },
-          include: { slides: { orderBy: { order: "asc" } } },
+          data: {
+            ...(title !== undefined && { title: title.trim() }),
+            ...(isPinned !== undefined && { isPinned }),
+          },
         });
-      },
-      { timeout: 20_000, maxWait: 10_000 }
-    );
+      }
+
+      if (slides !== undefined) {
+        // A save rewrites the whole slide set, so it runs as one deleteMany
+        // plus one createMany. The round trips a transaction needs must not
+        // scale with slide count: a per-slide update/create loop takes a full
+        // round trip per slide, which runs past the transaction timeout on a
+        // deck of any size once the database is far from the server.
+        const existing = await tx.slide.findMany({
+          where: { presentationId: id },
+          select: { id: true },
+        });
+        const reusableIds = new Set(existing.map((s) => s.id));
+
+        await tx.slide.deleteMany({ where: { presentationId: id } });
+
+        if (slides.length > 0) {
+          await tx.slide.createMany({
+            data: slides.map((slide, i) => {
+              // Re-insert a slide that already existed under its own id so ids
+              // stay stable across a save. `delete` reports whether the id was
+              // one of this presentation's and claims it, so an unknown or
+              // repeated id falls through to a database-generated one.
+              const keepId = !!slide.id && reusableIds.delete(slide.id);
+              return {
+                ...(keepId && { id: slide.id }),
+                text: slide.text,
+                background: slide.background,
+                image: slide.image ?? null,
+                audio: slide.audio ?? null,
+                order: i,
+                presentationId: id,
+                section: slide.section ?? null,
+                sectionGroup: slide.sectionGroup ?? null,
+              };
+            }),
+          });
+        }
+      }
+
+      return tx.presentation.findUnique({
+        where: { id },
+        include: { slides: { orderBy: { order: "asc" } } },
+      });
+    });
 
     // Delete uploaded files that were dropped by this save and are no longer
     // referenced by any slide (in this or any other presentation).

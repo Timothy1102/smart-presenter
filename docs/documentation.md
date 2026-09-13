@@ -555,6 +555,23 @@ npm start
 
 The app can be deployed to any platform that supports Node.js — Vercel, Railway, Render, etc. Set `DATABASE_URL` as an environment variable in your hosting platform's settings.
 
+#### Run the server in the database's region
+
+Every request here is database-bound, so the distance between the server and Supabase sets the floor on response time. Vercel defaults new projects to `iad1` (Washington, D.C.); with the database in Supabase's `ap-southeast-1`, that was a ~230ms round trip **per query**, which is enough for a multi-slide save to blow past a transaction timeout.
+
+`vercel.json` pins functions to the matching region:
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"]
+}
+```
+
+`sin1` *is* `ap-southeast-1` (Singapore), so the server and database sit in the same AWS region. If you move the database, change this to match — see [Vercel's region list](https://vercel.com/docs/regions#region-list). Hobby projects can pin exactly one region; static assets are still served worldwide from the nearest PoP either way.
+
+The Prisma client in `src/lib/prisma.ts` also raises the interactive-transaction timeout from Prisma's 5s default to 15s, as a safety margin for saves that run long.
+
 ### Useful Prisma Commands
 
 ```bash
